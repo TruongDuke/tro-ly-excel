@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trợ lý Excel · Làm sạch dữ liệu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+<style>
+/* Bảng tính xanh Excel, nền giấy: một công cụ làm việc, không phải trang quảng cáo */
+:root{
+  --bg:#f4f6f3; --surface:#ffffff; --ink:#1b2620; --muted:#5d6a63; --line:#dbe2dc;
+  --xl:#107c41; --xl-ink:#ffffff; --xl-soft:#e1f1e7;
+  --sua:#fff3c4; --sua-ink:#7a5a00; --loi:#fde4e1; --loi-ink:#b3261e; --xoa:#eceff1;
+  --f:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#111613; --surface:#18201b; --ink:#e6ece8; --muted:#9aa8a0; --line:#2b3630;
+  --xl:#3fbf7a; --xl-ink:#0b1a12; --xl-soft:#173324;
+  --sua:#3b3214; --sua-ink:#f2d27a; --loi:#3d1f1c; --loi-ink:#ff8f84; --xoa:#232a26; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--f)}
+.wrap{max-width:1180px;margin:0 auto;padding:28px max(16px,env(safe-area-inset-left)) 64px;display:grid;gap:18px}
+header h1{margin:0;font-size:clamp(26px,4.5vw,38px);line-height:1.1;font-weight:800;letter-spacing:-.02em}
+header h1 span{color:var(--xl)}
+header p{margin:6px 0 0;color:var(--muted);max-width:70ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:14px}
+h2{margin:0;font-size:17px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.muted{color:var(--muted);font-size:13.5px}
+button,.btn{font:600 14.5px var(--f);border-radius:8px;padding:10px 16px;cursor:pointer;border:1.5px solid var(--xl);background:var(--xl);color:var(--xl-ink)}
+button.ghost,.btn.ghost{background:transparent;color:var(--xl)}
+button:disabled{opacity:.5;cursor:default}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:22px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between;background:var(--bg)}
+.drop.over{border-color:var(--xl);background:var(--xl-soft)}
+.drop strong{display:block;font-size:16px}
+.filebtn input{position:absolute;width:1px;height:1px;opacity:0}
+.badge{font:600 12px var(--f);padding:2px 8px;border-radius:999px;background:var(--xl-soft);color:var(--xl)}
+.cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.col{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px;background:var(--bg)}
+.col b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+select{font:14px var(--f);padding:6px 8px;border-radius:7px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);width:100%}
+.opts{display:flex;gap:8px 18px;flex-wrap:wrap}
+.opts label{display:flex;gap:7px;align-items:center;font-size:14px}
+.tong{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tong div{border-radius:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--line)}
+.tong b{display:block;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.tong .s b{color:var(--sua-ink)} .tong .l b{color:var(--loi-ink)} .tong .x b{color:var(--muted)} .tong .o b{color:var(--xl)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:5px;border:1px solid var(--line)}
+.grid{overflow:auto;max-height:560px;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums;min-width:100%}
+th{position:sticky;top:0;background:var(--bg);color:var(--muted);font:600 12px var(--f);border:1px solid var(--line);padding:6px 9px;text-align:left;z-index:1;white-space:nowrap}
+th.rn,td.rn{position:sticky;left:0;background:var(--bg);color:var(--muted);text-align:right;font:500 12px var(--mono);z-index:2}
+td{border:1px solid var(--line);padding:5px 9px;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;background:var(--surface)}
+td.sua{background:var(--sua)} td.loi{background:var(--loi);color:var(--loi-ink);font-weight:600}
+tr.xoa td:not(.rn){background:var(--xoa);color:var(--muted);text-decoration:line-through}
+td .cu{display:block;font-size:11px;color:var(--muted);text-decoration:line-through}
+.tabs{display:flex;gap:6px}
+.tabs button{padding:6px 12px;font-size:13.5px}
+.note{font-size:12.5px;color:var(--muted);margin:0}
+.pill{display:inline-block;font:500 12px var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+@media (max-width:600px){.drop{padding:16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Trợ lý Excel · <span>Làm sạch dữ liệu</span></h1>
+    <p>Thả file danh sách lộn xộn vào: họ tên viết hoa chuẩn, tách họ và tên, số điện thoại đủ 10 số có số 0, ngày tháng về dd/mm/yyyy, tiền viết kiểu "1tr2", "500k" thành số, xoá dòng trùng. File chỉ xử lý ngay trên máy bạn, không gửi đi đâu.</p>
+  </header>
+
+  <section class="card">
+    <div class="drop" id="drop">
+      <div><strong>Thả file Excel hoặc CSV vào đây</strong><span class="muted">.xlsx · .xls · .csv · dòng đầu tiên là tiêu đề cột</span></div>
+      <div class="row"><label class="btn filebtn">Chọn file<input type="file" id="file" accept=".xlsx,.xls,.csv"></label>
+        <button class="ghost" id="mau" type="button">Thử với file mẫu</button></div>
+    </div>
+    <div class="row" id="sheetRow" hidden><span class="muted">Sheet:</span><select id="sheet" style="width:auto"></select><span class="muted" id="fileInfo"></span></div>
+  </section>
+
+  <section class="card" id="cauHinh" hidden>
+    <div class="row" style="justify-content:space-between"><h2>1 · Kiểm tra loại dữ liệu từng cột</h2><span class="muted">Máy tự đoán, sai thì chọn lại</span></div>
+    <div class="cols" id="cols"></div>
+    <h2>2 · Chọn việc cần làm</h2>
+    <div class="opts">
+      <label><input type="checkbox" id="oNFC" checked> Sửa lỗi font tiếng Việt (chữ tổ hợp)</label>
+      <label><input type="checkbox" id="oTach" checked> Tách cột Họ / Tên đệm / Tên</label>
+      <label><input type="checkbox" id="oTrong" checked> Xoá dòng trống</label>
+      <label><input type="checkbox" id="oTrung" checked> Xoá dòng trùng theo cột <select id="khoaTrung" style="width:auto;margin-left:4px"></select></label>
+    </div>
+  </section>
+
+  <section class="card" id="ketQua" hidden>
+    <div class="row" style="justify-content:space-between"><h2>3 · Kết quả</h2>
+      <div class="row"><button id="tai" type="button">Tải file đã làm sạch (.xlsx)</button></div></div>
+    <div class="tong" id="tong"></div>
+    <div class="row" style="justify-content:space-between">
+      <div class="legend"><span><i style="background:var(--sua)"></i>Ô đã sửa (dòng nhỏ là giá trị cũ)</span><span><i style="background:var(--loi)"></i>Cần kiểm tra lại</span><span><i style="background:var(--xoa)"></i>Dòng bị xoá</span></div>
+      <div class="tabs"><button class="ghost" data-loc="tat" type="button">Tất cả</button><button class="ghost" data-loc="doi" type="button">Chỉ dòng có thay đổi</button><button class="ghost" data-loc="loi" type="button">Chỉ dòng cần kiểm tra</button></div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <p class="note">File tải về gồm sheet <span class="pill">Đã làm sạch</span> (ngày là ngày thật của Excel, tiền là số, số điện thoại giữ số 0) và sheet <span class="pill">Nhật ký thay đổi</span> ghi từng ô đã sửa, giá trị cũ và giá trị mới để đối chiếu.</p>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="lam-sach.js"></script>
+<script src="giao-dien.js"></script>
+</body>
+</html>
