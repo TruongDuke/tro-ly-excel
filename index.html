@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Trợ lý Excel</title>
-<meta name="description" content="Làm sạch, gộp, đối chiếu và soát lỗi file Excel tiếng Việt ngay trên trình duyệt. File chỉ xử lý trên máy bạn.">
+<title>Trợ lý văn phòng</title>
+<meta name="description" content="Dán chữ từ ChatGPT, Claude ra file Word đúng chuẩn Times New Roman, có mục lục. Làm sạch, gộp, đối chiếu, soát lỗi Excel. File chỉ xử lý trên máy bạn.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
 <style>
@@ -104,6 +104,40 @@ td.flash{animation:flash 1.2s ease 2} @keyframes flash{50%{box-shadow:inset 0 0 
 #sKq .sec{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:12px}
 #sKq .row{justify-content:space-between}
 #sKq .item .ev{font-size:13px;display:flex;flex-wrap:wrap;gap:6px 12px}
+/* word */
+textarea#wNhap{width:100%;min-height:220px;resize:vertical;font:13.5px/1.5 var(--mono);padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+textarea#wNhap:focus{outline:none;border-color:var(--xl)}
+.w-ban{background:#8a8f8c;border-radius:10px;padding:22px 14px;overflow:auto;max-height:720px}
+.w-trang{--co:14pt;--gd:1.3;background:#fff;color:#000;width:min(100%,21cm);margin:0 auto;padding:2cm 1.5cm 2cm 3cm;box-shadow:0 2px 12px rgba(0,0,0,.35);font:var(--co)/var(--gd) "Times New Roman",Times,"Liberation Serif",serif;min-height:12cm}
+@media (max-width:700px){.w-trang{padding:1cm .8cm 1cm 1.2cm;font-size:calc(var(--co)*.85)}}
+.w-trang p{margin:6pt 0 0}
+.w-td{text-align:center;font-weight:700;text-transform:uppercase;font-size:calc(var(--co) + 1pt);margin:0 0 12pt!important;text-wrap:balance}
+.w-h{font-weight:700;margin-top:12pt!important;break-after:avoid}
+.w-h.c1{text-transform:uppercase}
+.w-h.c3{font-style:italic}
+.w-h.c4{font-weight:400;font-style:italic}
+.w-so{font-weight:700}
+.w-p{text-align:justify;text-indent:1cm}
+.w-q{font-style:italic;text-indent:0;padding-left:1cm}
+.w-li{text-align:justify;padding-left:calc(1cm + var(--lv)*.6cm);text-indent:-.5cm;margin-top:3pt!important}
+.w-dau{display:inline-block;min-width:.5cm}
+.w-trang code{font:.85em "Courier New",monospace}
+.w-code{font:calc(var(--co) - 2pt)/1.3 "Courier New",monospace;background:#f2f2f2;padding:6pt 10pt;white-space:pre-wrap;margin:6pt 0}
+.w-bangwrap{overflow-x:auto;margin:6pt 0}
+.w-bang{border-collapse:collapse;width:100%;font:calc(var(--co) - 1pt)/1.3 "Times New Roman",Times,serif;min-width:0}
+.w-bang th,.w-bang td{border:1px solid #000;padding:3pt 6pt;white-space:normal;max-width:none;background:#fff;color:#000;position:static;font:inherit}
+.w-bang th{background:#e7e6e6;font-weight:700;text-align:center}
+.w-bang td.n{text-align:right}
+.w-bo{color:#c62828;text-decoration:line-through;font-size:.85em;opacity:.75;margin:4pt 0;position:relative}
+.w-bo span{text-decoration:none;display:inline-block;font:600 10px var(--f);background:#fde4e1;color:#b3261e;border-radius:3px;padding:0 5px;margin-right:6px;vertical-align:1px}
+.w-bo hr{border:0;border-top:1px dashed #c62828;margin:4px 0}
+.w-hr{border:0;border-top:1px solid #999;margin:8pt 0}
+.w-ml{margin:0 0 14pt}
+.w-mlt{text-align:center;font-weight:700;margin-bottom:6pt}
+.w-mli{display:flex;gap:4px;align-items:baseline}
+.w-mli i{flex:1;border-bottom:1px dotted #000}
+.w-mli.c1{font-weight:700}.w-mli.c2{padding-left:.6cm}.w-mli.c3{padding-left:1.2cm;font-style:italic}
+.w-trg{color:#888}
 footer{font-size:12.5px;color:var(--muted);text-align:center}
 @media (max-width:600px){.drop{padding:16px}.item{grid-template-columns:minmax(0,1fr)}.addr{grid-row:auto;justify-self:start}}
 </style>
@@ -111,18 +145,44 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
 <body>
 <div class="wrap">
   <header>
-    <h1>Trợ lý <span>Excel</span></h1>
-    <p>Làm sạch, gộp, đối chiếu và soát lỗi file Excel tiếng Việt ngay trên trình duyệt. Không cần cài, không cần tài khoản. File chỉ xử lý trên máy bạn, không gửi đi đâu.</p>
+    <h1>Trợ lý <span>văn phòng</span></h1>
+    <p>Biến chữ dán từ ChatGPT, Claude thành file Word đúng chuẩn trình bày. Làm sạch, gộp, đối chiếu và soát lỗi file Excel. Không cần cài, không cần tài khoản, file chỉ xử lý trên máy bạn.</p>
   </header>
   <nav class="the" id="the">
-    <button type="button" data-the="lamsach" class="on">🧹 Làm sạch</button>
+    <button type="button" data-the="word" class="on">📝 Dán từ AI → Word chuẩn</button>
+    <button type="button" data-the="lamsach">🧹 Làm sạch Excel</button>
     <button type="button" data-the="gop">📚 Gộp nhiều file</button>
     <button type="button" data-the="doichieu">⚖️ Đối chiếu 2 danh sách</button>
     <button type="button" data-the="soat">🔍 Soát lỗi trước khi gửi</button>
   </nav>
 
   <!-- ================= LÀM SẠCH ================= -->
-  <div class="tab" data-tab="lamsach">
+  <!-- ================= WORD ================= -->
+  <div class="tab" data-tab="word">
+    <section class="card">
+      <p class="muted" style="margin:0">Dán nguyên câu trả lời của ChatGPT, Claude, Gemini vào ô dưới. Trang dọn dấu <span class="pill">**</span> <span class="pill">###</span>, biểu tượng cảm xúc, câu "Chắc chắn rồi!", đánh số đề mục kiểu I. / 1. / 1.1., dựng bảng thật, rồi xuất file Word Times New Roman, lề chuẩn văn bản hành chính, có số trang và mục lục.</p>
+      <textarea id="wNhap" spellcheck="false" placeholder="Dán chữ từ ChatGPT / Claude vào đây (Ctrl+V)…"></textarea>
+      <div class="row" style="justify-content:space-between">
+        <div class="row"><button class="ghost" id="wMau" type="button">Thử với câu trả lời mẫu của ChatGPT</button><button class="ghost sm" id="wXoa" type="button">Xoá</button></div>
+      </div>
+      <div class="opts">
+        <label><input type="checkbox" id="wCauAi" checked> Bỏ câu mở đầu, câu hỏi lại của AI</label>
+        <label><input type="checkbox" id="wEmoji" checked> Bỏ biểu tượng cảm xúc</label>
+        <label><input type="checkbox" id="wSo" checked> Đánh số đề mục I. / 1. / 1.1.</label>
+        <label><input type="checkbox" id="wMucLuc"> Thêm mục lục</label>
+        <label>Cỡ chữ <select id="wCo" style="width:auto"><option>13</option><option selected>14</option><option>12</option></select></label>
+        <label>Giãn dòng <select id="wGian" style="width:auto"><option value="1.15">1,15</option><option value="1.3" selected>1,3</option><option value="1.5">1,5</option><option value="1">1,0</option></select></label>
+      </div>
+    </section>
+    <section class="card" id="wKq" hidden>
+      <div class="row" style="justify-content:space-between"><h2>Xem trước</h2><button id="wTai" type="button">Tải file Word (.docx)</button></div>
+      <div class="tong" id="wTong"></div>
+      <div class="w-ban"><div class="w-trang" id="wTrang"></div></div>
+      <p class="note">Times New Roman · lề trên, dưới 2 cm, trái 3 cm, phải 1,5 cm · số trang giữa đầu trang từ trang 2 · đoạn văn căn đều, thụt đầu dòng 1 cm. Phần gạch ngang màu đỏ là chữ thừa sẽ không có trong file. Có mục lục thì khi mở file, Word hỏi cập nhật trường, bấm <b>Yes</b> để hiện số trang.</p>
+    </section>
+  </div>
+
+  <div class="tab" data-tab="lamsach" hidden>
     <section class="card">
       <p class="muted" style="margin:0">Họ tên viết hoa chuẩn, tách họ và tên, số điện thoại đủ 10 số có số 0, ngày tháng về dd/mm/yyyy, tiền viết kiểu "1tr2", "500k" thành số, xoá dòng trùng.</p>
       <div class="drop" id="drop">
@@ -221,7 +281,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     <section class="card" id="sKq" hidden></section>
   </div>
 
-  <footer>Trợ lý Excel · làm bằng code chạy ngay trong trình duyệt, không lưu và không gửi file của bạn đi đâu.</footer>
+  <footer>Trợ lý văn phòng · làm bằng code chạy ngay trong trình duyệt, không lưu và không gửi file của bạn đi đâu.</footer>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -231,5 +291,8 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
 <script src="gop.js"></script>
 <script src="doi-chieu.js"></script>
 <script src="soat-loi.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<script src="word.js"></script>
 </body>
 </html>
