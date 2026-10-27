@@ -304,6 +304,14 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     const sLoc = tim(t => t.startsWith("lọc xe"));
     if (!sChuyen || !sCT || !sBB || !sDN) throw new Error("File mẫu thiếu sheet. Cần các sheet: bảng kê số chuyến, bảng kê chi tiết KL, BB xác nhận kl và giá trị, Đề nghị tt.");
 
+    // mã KH đang chọn phải khớp bên A trong hồ sơ mẫu, tránh đổ số liệu khách này vào mẫu khách khác
+    if (opt.maKH) {
+      let benA = "", tenA = "";
+      for (const s of [sBB, sCT, sDN]) for (let r = 1; r < 25; r++) for (const c of ["A", "B", "C"]) { const v = s.v(c + r); if (typeof v === "string" && /bên a|bên thuê|kính gửi/i.test(v)) { benA += " " + khoaChu(v); if (!tenA && v.includes(":")) tenA = v.split(":").pop().trim(); } }
+      const tu = khoaChu(opt.maKH).split(/[_\s-]+/).filter(t => t.length >= 3);
+      if (benA && tu.length && !tu.some(t => benA.includes(t)))
+        throw new Error(`Hồ sơ mẫu ở ô 1 là của ${tenA || "khách hàng khác"}, không khớp mã KH đang chọn (${opt.maKH}). Thả hồ sơ cũ của ${opt.maKH} vào ô 1, hoặc chọn lại mã KH.`);
+    }
     const {ds: kl, loi} = docKL(klRows);
     if (!kl.length) throw new Error("File khối lượng không có dòng dữ liệu nào.");
     kl.sort((a, b) => a.ngay - b.ngay);   // giữ thứ tự xe trong từng ngày như file gốc (sort ổn định)
@@ -515,7 +523,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
       const [y, m, d] = $("#ngayLap").value.split("-").map(Number);
       const dg = +String($("#donGia").value).replace(/[^\d]/g, "") || +$("#donGia").dataset.tuDuLieu || 0;
       const zip = await JSZip.loadAsync(mau.buf.slice(0));
-      const r = await HSTT.lap(zip, kl.rows, {ngayLap: new Date(y, m - 1, d), donGia: dg || undefined, cungDuong: td ? $("#lCD").value : ""}, {DOMParser, XMLSerializer});
+      const r = await HSTT.lap(zip, kl.rows, {ngayLap: new Date(y, m - 1, d), donGia: dg || undefined, cungDuong: td ? $("#lCD").value : "", maKH: td ? $("#lKH").value : ""}, {DOMParser, XMLSerializer});
       ketQua = r; const t = r.tom;
       $("#kqTieuDe").textContent = t.tu === t.den ? `Hồ sơ ngày ${t.tu}` : `Hồ sơ từ ${t.tu} đến ${t.den}`;
       $("#tong").innerHTML = `<div><b>${so(t.chuyen)}</b>chuyến</div><div><b>${so(t.kl)}</b>m3</div><div><b>${t.xe}</b>xe</div><div><b>${so(t.tien)}</b>đồng (đơn giá ${so(t.donGia)})</div>`;
