@@ -256,7 +256,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
   // tìm sheet nhập liệu trong file, trả về các dòng {ngay, bs, kh, cd, sc, kl, gia}
   function docTheoDoi(sheets) {   // sheets: [{ten, rows}]
     const ung = sheets.filter(s => s.rows.length && laTheoDoi(s.rows[0]));
-    const s = ung.find(x => /nhập liệu/i.test(x.ten)) || ung[0];
+    const s = ung.find(x => /^\s*nhập liệu/i.test(x.ten)) || ung.find(x => /nhập liệu/i.test(x.ten) && !/bản sao/i.test(x.ten)) || ung[0];
     if (!s) return null;
     const hd = s.rows[0].map(khoaChu), idx = (f, tu = 0, den = hd.length) => { for (let i = tu; i < den; i++) if (f(hd[i])) return i; return -1; };
     const cuoi = (f, den) => { for (let i = den - 1; i >= 0; i--) if (f(hd[i])) return i; return -1; };
@@ -264,7 +264,8 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     // phần BÁN RA: số lượng và khối nằm ngay trước cột giá bán ra; không có cột giá bán thì lấy cột số lượng/khối đầu tiên
     const cG = idx(h => h.includes("giá bán"));
     const cS = cG >= 0 ? cuoi(h => h.startsWith("số lượng") || h.startsWith("số chuyến"), cG) : idx(h => h.startsWith("số lượng") || h.startsWith("số chuyến"));
-    const cL = cG >= 0 ? cuoi(h => h === "khối" || h.startsWith("kl/") || h.startsWith("khối lượng mua") || h === "khối lượng", cG) : idx(h => h === "khối" || h.startsWith("kl/") || h.startsWith("khối lượng"));
+    const laKhoi = h => (h.startsWith("khối") || h.startsWith("kl")) && !h.includes("tổng");   // khối lượng 1 chuyến, không lấy cột tổng
+    const cL = cG >= 0 ? cuoi(laKhoi, cG) : idx(laKhoi);
     const thieu = [["Ngày", cN], ["Biển số xe", cB], ["Mã KH", cK], ["Cung đường", cC], ["Số lượng", cS], ["Khối", cL]].filter(x => x[1] < 0).map(x => x[0]);
     if (thieu.length) throw new Error(`Sheet "${s.ten}" thiếu cột: ${thieu.join(", ")}.`);
     const ds = [], loi = [];
@@ -413,6 +414,12 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
       zip.file("xl/_rels/workbook.xml.rels", rl.replace(/<Relationship[^>]*calcChain[^>]*\/>/, ""));
     }
 
+    // cung đường đang chọn không khớp nội dung tuyến trong file mẫu -> dễ lấy nhầm mẫu của tuyến khác
+    if (opt.cungDuong) {
+      const dau = khoaChu(opt.cungDuong).replace(/\(.*?\)/g, "").split(/\s+đi\s+|\s+về\s+|\s+sang\s+|\s*-\s*/)[0].trim();
+      let chuMau = ""; for (let r = 1; r < 40; r++) { const v = sBB.v("A" + r); if (typeof v === "string" && /xác nhận khối lượng/i.test(v) && /từ|dự án/i.test(v)) chuMau += " " + khoaChu(v); }
+      if (dau && chuMau && !chuMau.includes(dau)) canh.push(`File mẫu ghi tuyến khác với cung đường đang chọn ("${opt.cungDuong}"). Kiểm tra lại có thả đúng hồ sơ cũ của tuyến này không.`);
+    }
     // cảnh báo để người dùng soát
     const theoXeNgay = new Map(); kl.forEach(x => { const k = x.ngay + "|" + x.bs; theoXeNgay.set(k, (theoXeNgay.get(k) || 0) + 1); });
     [...theoXeNgay].filter(([, n]) => n > 1).forEach(([k]) => { const [n, bs] = k.split("|"); canh.push(`Xe ${bs} xuất hiện ${theoXeNgay.get(k)} lần trong ngày ${dmy(tuSerial(+n))}. Kiểm tra có nhập trùng không.`); });
@@ -449,7 +456,11 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     if (!cap) { const moiNhat = Math.max(...ds.map(x => x.ngay)); const kh0 = ds.filter(x => x.ngay === moiNhat)[0].kh;
       opt($("#lKH"), [...new Set(ds.map(x => x.kh))].sort().map(k => [k, k]), kh0); }
     const kh = $("#lKH").value, dsKH = ds.filter(x => x.kh === kh);
-    if (!cap || cap === "kh") opt($("#lCD"), [...new Set(dsKH.map(x => x.cd))].map(c => [c, c]), $("#lCD").value);
+    if (!cap || cap === "kh") {   // cung đường có số liệu gần nhất lên đầu và được chọn sẵn
+      const cuoi = new Map(); dsKH.forEach(x => cuoi.set(x.cd, Math.max(cuoi.get(x.cd) || 0, x.ngay)));
+      const cds = [...cuoi].sort((a, b) => b[1] - a[1]).map(([c]) => [c, c]);
+      opt($("#lCD"), cds, cds[0][0]);
+    }
     const cd = $("#lCD").value, ngay = [...new Set(dsKH.filter(x => x.cd === cd).map(x => x.ngay))].sort((a, b) => a - b);
     if (cap !== "ngay") { const cuoi = ngay[ngay.length - 1]; opt($("#lTu"), ngay.map(n => [n, ngayChu(n)]), cuoi); opt($("#lDen"), ngay.map(n => [n, ngayChu(n)]), cuoi); }
     if (+$("#lDen").value < +$("#lTu").value) $("#lDen").value = $("#lTu").value;
@@ -482,8 +493,12 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     chay();
   });
   gan($("#dKL"), $("#fKL"), async f => {
-    const wb = XLSX.read(await docBuf(f), {type: "array"});   // giữ ngày dạng số Excel, tránh lệch múi giờ
-    const sheets = wb.SheetNames.map(ten => ({ten, rows: XLSX.utils.sheet_to_json(wb.Sheets[ten], {header: 1, raw: true, defval: ""})}));
+    const buf = await docBuf(f);
+    // file Google Sheet có thể rất nhiều sheet: chỉ đọc sheet nhập liệu (hoặc sheet đầu) cho nhanh
+    const ten = XLSX.read(buf, {type: "array", bookSheets: true}).SheetNames;
+    const can = ten.filter(n => /nhập liệu/i.test(n)); const doc = can.length ? can : [ten[0]];
+    const wb = XLSX.read(buf, {type: "array", sheets: doc});   // giữ ngày dạng số Excel, tránh lệch múi giờ
+    const sheets = doc.map(ten => ({ten, rows: XLSX.utils.sheet_to_json(wb.Sheets[ten], {header: 1, raw: true, defval: ""})}));
     $("#tKL").textContent = "📄 " + f.name; $("#dKL").classList.add("ok");
     td = null; $("#loc").hidden = true;
     try { td = HSTT.docTheoDoi(sheets); } catch (e) { loi(e.message); return; }
@@ -500,7 +515,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
       const [y, m, d] = $("#ngayLap").value.split("-").map(Number);
       const dg = +String($("#donGia").value).replace(/[^\d]/g, "") || +$("#donGia").dataset.tuDuLieu || 0;
       const zip = await JSZip.loadAsync(mau.buf.slice(0));
-      const r = await HSTT.lap(zip, kl.rows, {ngayLap: new Date(y, m - 1, d), donGia: dg || undefined}, {DOMParser, XMLSerializer});
+      const r = await HSTT.lap(zip, kl.rows, {ngayLap: new Date(y, m - 1, d), donGia: dg || undefined, cungDuong: td ? $("#lCD").value : ""}, {DOMParser, XMLSerializer});
       ketQua = r; const t = r.tom;
       $("#kqTieuDe").textContent = t.tu === t.den ? `Hồ sơ ngày ${t.tu}` : `Hồ sơ từ ${t.tu} đến ${t.den}`;
       $("#tong").innerHTML = `<div><b>${so(t.chuyen)}</b>chuyến</div><div><b>${so(t.kl)}</b>m3</div><div><b>${t.xe}</b>xe</div><div><b>${so(t.tien)}</b>đồng (đơn giá ${so(t.donGia)})</div>`;
