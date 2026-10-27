@@ -28,7 +28,7 @@ button:disabled{opacity:.5;cursor:default}
 .filebtn input{position:absolute;width:1px;height:1px;opacity:0}
 .opts{display:flex;gap:10px 22px;flex-wrap:wrap;align-items:end}
 .opts label{display:grid;gap:4px;font-size:13.5px;color:var(--muted)}
-input[type=date],input[type=text]{font:15px var(--f);padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
+select,input[type=date],input[type=text]{font:15px var(--f);padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
 .tong{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .tong div{border-radius:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--line)}
 .tong b{display:block;font-size:24px;line-height:1.15;font-variant-numeric:tabular-nums;color:var(--xl)}
@@ -48,7 +48,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
 <div class="wrap">
   <header>
     <h1>Lập <span>hồ sơ thanh toán</span> vận chuyển</h1>
-    <p>Thả file hồ sơ kỳ trước và file khối lượng xe mới, máy ra bộ hồ sơ mới: bảng kê số chuyến, bảng kê chi tiết, biên bản xác nhận, giấy đề nghị thanh toán. Giữ nguyên mẫu, định dạng, vùng in. File chỉ xử lý trên máy này.</p>
+    <p>Thả file hồ sơ kỳ trước và file số liệu (Google Sheet theo dõi doanh thu tải về, hoặc file khối lượng xe), chọn khách hàng, cung đường, ngày, máy ra bộ hồ sơ mới: bảng kê số chuyến, bảng kê chi tiết, biên bản xác nhận, giấy đề nghị thanh toán. Giữ nguyên mẫu, định dạng, vùng in. File chỉ xử lý trên máy này.</p>
   </header>
 
   <section class="card">
@@ -60,11 +60,18 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
         <label class="btn ghost filebtn">Chọn file<input type="file" id="fMau" accept=".xlsx"></label>
       </div>
       <div class="drop" id="dKL">
-        <b>2 · File khối lượng xe mới</b>
-        <span class="muted">4 cột: Ngày · Biển số xe · Số chuyến · KL/1 chuyến (M3)</span>
+        <b>2 · File số liệu</b>
+        <span class="muted">File theo dõi doanh thu tải từ Google Sheet (Tệp → Tải xuống → Microsoft Excel), hoặc file khối lượng 4 cột: Ngày · Biển số · Số chuyến · KL/1 chuyến</span>
         <span class="ten" id="tKL"></span>
         <label class="btn ghost filebtn">Chọn file<input type="file" id="fKL" accept=".xlsx,.xls,.csv"></label>
       </div>
+    </div>
+    <div class="opts" id="loc" hidden>
+      <label>Mã khách hàng<select id="lKH"></select></label>
+      <label>Cung đường<select id="lCD"></select></label>
+      <label>Từ ngày<select id="lTu"></select></label>
+      <label>Đến ngày<select id="lDen"></select></label>
+      <span class="muted" id="lSo" style="align-self:center"></span>
     </div>
     <div class="opts">
       <label>Ngày lập hồ sơ<input type="date" id="ngayLap"></label>
@@ -230,6 +237,61 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     return {ds, loi};
   }
 
+  // ---------- đọc file theo dõi doanh thu (Google Sheet tải về dạng Excel, sheet NHẬP LIỆU PS) ----------
+  const docNgay = n => {
+    if (n instanceof Date) return Math.round((n.getTime() - n.getTimezoneOffset() * 6e4) / 864e5 + 25569);
+    if (typeof n === "number") return n;
+    const m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(String(n || "").trim());
+    return m ? ngaySerial(new Date(+m[3], +m[2] - 1, +m[1])) : NaN;
+  };
+  const soVN = v => {   // "25,69" · "1.234,5" · 25.69
+    if (typeof v === "number") return v;
+    let t = String(v ?? "").trim().replace(/\s/g, "");
+    if (!t) return NaN;
+    if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
+    else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, "");
+    return +t;
+  };
+  const laTheoDoi = hd => { const h = hd.map(khoaChu); return h.some(x => x.includes("mã kh")) && h.some(x => x.includes("cung đường")); };
+  // tìm sheet nhập liệu trong file, trả về các dòng {ngay, bs, kh, cd, sc, kl, gia}
+  function docTheoDoi(sheets) {   // sheets: [{ten, rows}]
+    const ung = sheets.filter(s => s.rows.length && laTheoDoi(s.rows[0]));
+    const s = ung.find(x => /nhập liệu/i.test(x.ten)) || ung[0];
+    if (!s) return null;
+    const hd = s.rows[0].map(khoaChu), idx = (f, tu = 0, den = hd.length) => { for (let i = tu; i < den; i++) if (f(hd[i])) return i; return -1; };
+    const cuoi = (f, den) => { for (let i = den - 1; i >= 0; i--) if (f(hd[i])) return i; return -1; };
+    const cN = idx(h => h.startsWith("ngày")), cB = idx(h => h.includes("biển")), cK = idx(h => h.includes("mã kh")), cC = idx(h => h.includes("cung đường"));
+    // phần BÁN RA: số lượng và khối nằm ngay trước cột giá bán ra; không có cột giá bán thì lấy cột số lượng/khối đầu tiên
+    const cG = idx(h => h.includes("giá bán"));
+    const cS = cG >= 0 ? cuoi(h => h.startsWith("số lượng") || h.startsWith("số chuyến"), cG) : idx(h => h.startsWith("số lượng") || h.startsWith("số chuyến"));
+    const cL = cG >= 0 ? cuoi(h => h === "khối" || h.startsWith("kl/") || h.startsWith("khối lượng mua") || h === "khối lượng", cG) : idx(h => h === "khối" || h.startsWith("kl/") || h.startsWith("khối lượng"));
+    const thieu = [["Ngày", cN], ["Biển số xe", cB], ["Mã KH", cK], ["Cung đường", cC], ["Số lượng", cS], ["Khối", cL]].filter(x => x[1] < 0).map(x => x[0]);
+    if (thieu.length) throw new Error(`Sheet "${s.ten}" thiếu cột: ${thieu.join(", ")}.`);
+    const ds = [], loi = [];
+    s.rows.slice(1).forEach((r, i) => {
+      if (!r || r.every(v => v === null || v === undefined || v === "")) return;
+      const x = {ngay: docNgay(r[cN]), bs: String(r[cB] || "").trim().toUpperCase(), kh: String(r[cK] || "").trim(), cd: String(r[cC] || "").trim().replace(/\s+/g, " "), sc: soVN(r[cS]), kl: soVN(r[cL]), gia: cG >= 0 ? soVN(r[cG]) : NaN, dong: i + 2};
+      if (!x.bs && !x.kh) return;
+      if (!isFinite(x.ngay) || !x.bs || !x.kh || !x.cd || !isFinite(x.sc) || !isFinite(x.kl)) { loi.push(x); return; }
+      ds.push(x);
+    });
+    return {ten: s.ten, ds, loi, coGia: cG >= 0};
+  }
+  // lọc theo mã KH, cung đường, khoảng ngày -> dạng bảng khối lượng mà lap() đọc được
+  function locTheoDoi(td, {kh, cd, tu, den}) {
+    const ds = td.ds.filter(x => x.kh === kh && x.cd === cd && x.ngay >= tu && x.ngay <= den);
+    const gia = [...new Set(ds.map(x => x.gia).filter(isFinite))];
+    const loi = td.loi.filter(x => (!x.kh || x.kh === kh) && (!x.cd || x.cd === cd) && (!isFinite(x.ngay) || (x.ngay >= tu && x.ngay <= den)));
+    return {
+      rows: [["Ngày", "Biển số xe", "Số chuyến", "KL/1 chuyến"], ...ds.map(x => [x.ngay, x.bs, x.sc, x.kl])],
+      gia, so: ds.length,
+      canh: [
+        ...(gia.length > 1 ? [`Có ${gia.length} mức giá bán khác nhau trong các dòng đã chọn: ${gia.map(g => g.toLocaleString("vi-VN")).join(", ")}. Đang dùng mức ${Math.max(...gia).toLocaleString("vi-VN")}, kiểm tra lại.`] : []),
+        ...loi.map(x => `Dòng ${x.dong} của sheet nhập liệu thiếu hoặc sai dữ liệu (biển số ${x.bs || "trống"}), không đưa vào hồ sơ.`),
+      ],
+    };
+  }
+
   // ---------- lập hồ sơ ----------
   async function lap(zip, klRows, opt, env) {
     const {wbDoc, ds} = await moSo(zip, env);
@@ -371,13 +433,35 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     return t;
   }
 
-  root.HSTT = {lap, bangChu, docKL, tenFileMoi, ngaySerial, tuSerial};
+  root.HSTT = {lap, bangChu, docKL, docTheoDoi, locTheoDoi, laTheoDoi, tenFileMoi, ngaySerial, tuSerial};
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
 (function () {
   const $ = s => document.querySelector(s);
-  let mau = null, kl = null, ketQua = null;
+  let mau = null, kl = null, ketQua = null, td = null, canhLoc = [];
+  const loi = m => { $("#kq").hidden = true; $("#loi").textContent = m; $("#loi").hidden = false; };
+  const ngayChu = n => { const d = HSTT.tuSerial(n); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`; };
+  const opt = (el, ds, chon) => { el.innerHTML = ds.map(([v, t]) => `<option value="${String(v).replace(/"/g, "&quot;")}">${t}</option>`).join(""); if (chon !== undefined && ds.some(d => String(d[0]) === String(chon))) el.value = chon; };
+  // bộ lọc mã KH -> cung đường -> ngày (mặc định: ngày gần nhất có số liệu)
+  function dungLoc(cap) {
+    const ds = td.ds;
+    if (!cap) { const moiNhat = Math.max(...ds.map(x => x.ngay)); const kh0 = ds.filter(x => x.ngay === moiNhat)[0].kh;
+      opt($("#lKH"), [...new Set(ds.map(x => x.kh))].sort().map(k => [k, k]), kh0); }
+    const kh = $("#lKH").value, dsKH = ds.filter(x => x.kh === kh);
+    if (!cap || cap === "kh") opt($("#lCD"), [...new Set(dsKH.map(x => x.cd))].map(c => [c, c]), $("#lCD").value);
+    const cd = $("#lCD").value, ngay = [...new Set(dsKH.filter(x => x.cd === cd).map(x => x.ngay))].sort((a, b) => a - b);
+    if (cap !== "ngay") { const cuoi = ngay[ngay.length - 1]; opt($("#lTu"), ngay.map(n => [n, ngayChu(n)]), cuoi); opt($("#lDen"), ngay.map(n => [n, ngayChu(n)]), cuoi); }
+    if (+$("#lDen").value < +$("#lTu").value) $("#lDen").value = $("#lTu").value;
+    const l = HSTT.locTheoDoi(td, {kh, cd, tu: +$("#lTu").value, den: +$("#lDen").value});
+    kl = {ten: "", rows: l.rows}; canhLoc = l.canh;
+    if (l.gia.length) { $("#donGia").dataset.tuDuLieu = Math.max(...l.gia); $("#donGia").placeholder = so(Math.max(...l.gia)) + " (theo giá bán ra)"; } else delete $("#donGia").dataset.tuDuLieu;
+    $("#lSo").textContent = `${l.so} dòng`;
+    $("#loc").hidden = false;
+  }
+  $("#lKH").addEventListener("change", () => { dungLoc("kh"); chay(); });
+  $("#lCD").addEventListener("change", () => { dungLoc("cd"); chay(); });
+  ["#lTu", "#lDen"].forEach(id => $(id).addEventListener("change", () => { dungLoc("ngay"); chay(); }));
   const homNay = new Date(); $("#ngayLap").value = `${homNay.getFullYear()}-${String(homNay.getMonth() + 1).padStart(2, "0")}-${String(homNay.getDate()).padStart(2, "0")}`;
   const so = n => Number(n).toLocaleString("vi-VN", {maximumFractionDigits: 2});
   const docBuf = f => new Promise((ok, loi) => { const r = new FileReader(); r.onload = e => ok(e.target.result); r.onerror = loi; r.readAsArrayBuffer(f); });
@@ -399,8 +483,13 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
   });
   gan($("#dKL"), $("#fKL"), async f => {
     const wb = XLSX.read(await docBuf(f), {type: "array"});   // giữ ngày dạng số Excel, tránh lệch múi giờ
-    kl = {ten: f.name, rows: XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, raw: true, defval: ""})};
-    $("#tKL").textContent = "📄 " + f.name; $("#dKL").classList.add("ok"); chay();
+    const sheets = wb.SheetNames.map(ten => ({ten, rows: XLSX.utils.sheet_to_json(wb.Sheets[ten], {header: 1, raw: true, defval: ""})}));
+    $("#tKL").textContent = "📄 " + f.name; $("#dKL").classList.add("ok");
+    td = null; $("#loc").hidden = true;
+    try { td = HSTT.docTheoDoi(sheets); } catch (e) { loi(e.message); return; }
+    if (td) { $("#tKL").textContent += ` · sheet "${td.ten}", ${td.ds.length} dòng`; dungLoc(); }
+    else kl = {ten: f.name, rows: sheets[0].rows};
+    chay();
   });
   ["#ngayLap", "#donGia"].forEach(id => $(id).addEventListener("change", chay));
 
@@ -409,7 +498,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     if (!mau || !kl) return;
     try {
       const [y, m, d] = $("#ngayLap").value.split("-").map(Number);
-      const dg = +String($("#donGia").value).replace(/[^\d]/g, "") || 0;
+      const dg = +String($("#donGia").value).replace(/[^\d]/g, "") || +$("#donGia").dataset.tuDuLieu || 0;
       const zip = await JSZip.loadAsync(mau.buf.slice(0));
       const r = await HSTT.lap(zip, kl.rows, {ngayLap: new Date(y, m - 1, d), donGia: dg || undefined}, {DOMParser, XMLSerializer});
       ketQua = r; const t = r.tom;
@@ -418,10 +507,11 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
       $("#chu").innerHTML = `<span>Bằng chữ</span>${t.chu}`;
       $("#theoNgay").innerHTML = `<tr><th>Ngày</th><th>Số xe</th><th>Số chuyến</th><th>Khối lượng (m3)</th><th>Thành tiền</th></tr>` +
         t.ngayTheo.map(n => `<tr><td>${n.ngay}</td><td class="n">${n.xe}</td><td class="n">${so(n.chuyen)}</td><td class="n">${so(n.kl)}</td><td class="n">${so(Math.round(n.kl * t.donGia))}</td></tr>`).join("");
-      $("#canh").hidden = !r.canh.length;
-      $("#canh").innerHTML = `<b>Cần xem lại</b><ul>${r.canh.map(c => `<li>${c.replace(/</g, "&lt;")}</li>`).join("")}</ul>`;
+      const canh = canhLoc.concat(r.canh);
+      $("#canh").hidden = !canh.length;
+      $("#canh").innerHTML = `<b>Cần xem lại</b><ul>${canh.map(c => `<li>${c.replace(/</g, "&lt;")}</li>`).join("")}</ul>`;
       $("#kq").hidden = false;
-    } catch (e) { $("#kq").hidden = true; $("#loi").textContent = e.message; $("#loi").hidden = false; }
+    } catch (e) { loi(e.message); }
   }
   $("#tai").addEventListener("click", async () => {
     if (!ketQua) return;
