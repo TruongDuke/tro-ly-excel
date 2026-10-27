@@ -74,7 +74,8 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
       <span class="muted" id="lSo" style="align-self:center"></span>
     </div>
     <div class="opts">
-      <label>Ngày lập hồ sơ<input type="date" id="ngayLap"></label>
+      <label id="nhanNgay">Ngày lập hồ sơ<input type="date" id="ngayLap"></label>
+      <label id="nhanCach" hidden>Cách tính khối lượng (mẫu TLS)<select id="cachKL"><option value="nhan">Số chuyến × m3/chuyến (khớp sổ doanh thu)</option><option value="cu">Như file cũ: chỉ cộng m3/chuyến</option></select></label>
       <label>Đơn giá (đã VAT, đồng/m3)<input type="text" id="donGia" inputmode="numeric" placeholder="lấy theo hồ sơ cũ" size="26"></label>
     </div>
   </section>
@@ -116,7 +117,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     if (dv) o.push(dv === 1 && ch > 1 ? "mốt" : dv === 5 && ch > 0 ? "lăm" : CS[dv]);
     return o.join(" ");
   }
-  function bangChu(so) {
+  function bangChu(so, kieu) {   // kieu "phay": "Bốn trăm triệu, hai trăm nghìn đồng" như mẫu TLS
     so = Math.round(Math.abs(so));
     if (!so) return "Không đồng";
     const DV = ["", " nghìn", " triệu", " tỷ"], nhom = [];
@@ -128,7 +129,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
       const dv = i === 0 ? "" : i % 3 === 0 ? " tỷ" : DV[i % 3];
       o.push(doc3(g, i < nhom.length - 1) + dv);
     }
-    const s = o.join(" ").replace(/\s+/g, " ").replace(/ tỷ tỷ/g, " tỷ").trim() + " đồng chẵn";
+    const s = o.join(kieu === "phay" ? ", " : " ").replace(/\s+/g, " ").replace(/ tỷ tỷ/g, " tỷ").replace(/, tỷ/g, " tỷ").trim() + (kieu === "phay" ? " đồng" : " đồng chẵn");
     return s[0].toUpperCase() + s.slice(1);
   }
 
@@ -285,7 +286,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     const loi = td.loi.filter(x => (!x.kh || x.kh === kh) && (!x.cd || x.cd === cd) && (!isFinite(x.ngay) || (x.ngay >= tu && x.ngay <= den)));
     return {
       rows: [["Ngày", "Biển số xe", "Số chuyến", "KL/1 chuyến"], ...ds.map(x => [x.ngay, x.bs, x.sc, x.kl])],
-      gia, so: ds.length,
+      gia, so: ds.length, tien: ds.every(x => isFinite(x.gia)) ? Math.round(ds.reduce((a, x) => a + x.sc * x.kl * x.gia, 0)) : null,
       canh: [
         ...(gia.length > 1 ? [`Có ${gia.length} mức giá bán khác nhau trong các dòng đã chọn: ${gia.map(g => g.toLocaleString("vi-VN")).join(", ")}. Đang dùng mức ${Math.max(...gia).toLocaleString("vi-VN")}, kiểm tra lại.`] : []),
         ...loi.map(x => `Dòng ${x.dong} của sheet nhập liệu thiếu hoặc sai dữ liệu (biển số ${x.bs || "trống"}), không đưa vào hồ sơ.`),
@@ -294,8 +295,62 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
   }
 
   // ---------- lập hồ sơ ----------
+  // ---------- kiểm tra chung cho mọi mẫu ----------
+  function nhanMau(ds) {   // tên bên A và nội dung tuyến ghi trong hồ sơ mẫu
+    let benA = "", tenA = "", tuyen = "";
+    for (const s of ds.filter(x => !x.an_)) for (let r = 1; r < 26; r++) {
+      const o = ["A", "B", "C", "D", "E"].map(c => s.v(c + r));
+      o.forEach((v, i) => {
+        if (typeof v !== "string") return;
+        if (/bên a\b|bên a |bên thuê|kính gửi/i.test(v)) {
+          let ten = v.includes(":") ? v.split(":").pop().trim() : "";
+          if (!ten) ten = o.slice(i + 1).find(x => typeof x === "string" && x.trim()) || "";
+          benA += " " + khoaChu(v + " " + ten); if (!tenA && ten) tenA = ten.trim();
+        }
+        if (/vận chuyển/i.test(v) && /từ|dự án|về|sang/i.test(v)) tuyen += " " + khoaChu(v);
+      });
+    }
+    return {benA, tenA, tuyen};
+  }
+  function kiemMau(ds, opt) {
+    const {benA, tenA, tuyen} = nhanMau(ds), canh = [];
+    if (opt.maKH) {
+      const tu = khoaChu(opt.maKH).split(/[_\s-]+/).filter(t => t.length >= 3);
+      if (benA && tu.length && !tu.some(t => benA.includes(t)))
+        throw new Error(`Hồ sơ mẫu ở ô 1 là của ${tenA || "khách hàng khác"}, không khớp mã KH đang chọn (${opt.maKH}). Thả hồ sơ cũ của ${opt.maKH} vào ô 1, hoặc chọn lại mã KH.`);
+    }
+    if (opt.cungDuong && tuyen) {
+      const dau = khoaChu(opt.cungDuong).replace(/\(.*?\)/g, "").split(/\s+đi\s+|\s+về\s+|\s+sang\s+|\s*-\s*/)[0].trim();
+      if (dau && !tuyen.includes(dau)) canh.push(`File mẫu ghi tuyến khác với cung đường đang chọn ("${opt.cungDuong}"). Kiểm tra lại có thả đúng hồ sơ cũ của tuyến này không.`);
+    }
+    return canh;
+  }
+  async function hoanTat(zip, wbDoc, sheets, env) {   // ghi lại các sheet, bắt Excel tính lại toàn bộ khi mở
+    for (const s of sheets.filter(Boolean)) zip.file(s.path, s.xml());
+    let calc = wbDoc.getElementsByTagNameNS(NS, "calcPr")[0];
+    if (!calc) { calc = wbDoc.createElementNS(NS, "calcPr"); wbDoc.documentElement.appendChild(calc); }
+    calc.setAttribute("fullCalcOnLoad", "1");
+    zip.file("xl/workbook.xml", new env.XMLSerializer().serializeToString(wbDoc));
+    if (zip.file("xl/calcChain.xml")) {   // bỏ chuỗi tính cũ để Excel tự dựng lại
+      zip.remove("xl/calcChain.xml");
+      const ct = await zip.file("[Content_Types].xml").async("string");
+      zip.file("[Content_Types].xml", ct.replace(/<Override[^>]*calcChain[^>]*\/>/, ""));
+      const rl = await zip.file("xl/_rels/workbook.xml.rels").async("string");
+      zip.file("xl/_rels/workbook.xml.rels", rl.replace(/<Relationship[^>]*calcChain[^>]*\/>/, ""));
+    }
+  }
+  const laMauTLS = ds => ds.some(s => khoaChu(s.ten) === "khối lượng") && ds.some(s => khoaChu(s.ten).startsWith("đối chiếu gt"));
+
   async function lap(zip, klRows, opt, env) {
-    const {wbDoc, ds} = await moSo(zip, env);
+    const so = await moSo(zip, env);
+    const canhMau = kiemMau(so.ds, opt);
+    const r = laMauTLS(so.ds) ? await lapTLS(zip, so, klRows, opt, env) : await lapECO(zip, so, klRows, opt, env);
+    r.canh = canhMau.concat(r.canh);
+    return r;
+  }
+
+  // ---------- mẫu kiểu ECO: bảng kê số chuyến, bảng kê chi tiết, biên bản xác nhận, đề nghị thanh toán ----------
+  async function lapECO(zip, {wbDoc, ds}, klRows, opt, env) {
     const tim = (f, them) => ds.find(s => f(khoaChu(s.ten)) && (them ? them(s) : true));
     const sChuyen = tim(t => t.startsWith("bảng kê số chuyến") && !t.includes("("), s => !s.an_) || tim(t => t.startsWith("bảng kê số chuyến") && !t.includes("("));
     const sCT = tim(t => t.startsWith("bảng kê chi tiết"), s => !s.an_);
@@ -304,14 +359,6 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     const sLoc = tim(t => t.startsWith("lọc xe"));
     if (!sChuyen || !sCT || !sBB || !sDN) throw new Error("File mẫu thiếu sheet. Cần các sheet: bảng kê số chuyến, bảng kê chi tiết KL, BB xác nhận kl và giá trị, Đề nghị tt.");
 
-    // mã KH đang chọn phải khớp bên A trong hồ sơ mẫu, tránh đổ số liệu khách này vào mẫu khách khác
-    if (opt.maKH) {
-      let benA = "", tenA = "";
-      for (const s of [sBB, sCT, sDN]) for (let r = 1; r < 25; r++) for (const c of ["A", "B", "C"]) { const v = s.v(c + r); if (typeof v === "string" && /bên a|bên thuê|kính gửi/i.test(v)) { benA += " " + khoaChu(v); if (!tenA && v.includes(":")) tenA = v.split(":").pop().trim(); } }
-      const tu = khoaChu(opt.maKH).split(/[_\s-]+/).filter(t => t.length >= 3);
-      if (benA && tu.length && !tu.some(t => benA.includes(t)))
-        throw new Error(`Hồ sơ mẫu ở ô 1 là của ${tenA || "khách hàng khác"}, không khớp mã KH đang chọn (${opt.maKH}). Thả hồ sơ cũ của ${opt.maKH} vào ô 1, hoặc chọn lại mã KH.`);
-    }
     const {ds: kl, loi} = docKL(klRows);
     if (!kl.length) throw new Error("File khối lượng không có dòng dữ liệu nào.");
     kl.sort((a, b) => a.ngay - b.ngay);   // giữ thứ tự xe trong từng ngày như file gốc (sort ổn định)
@@ -408,26 +455,9 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
       const nguon = ds.find(s => s.ten === m[1]); if (nguon) sCT.ghi(c.getAttribute("r"), nguon.v(m[2]));
     } }
 
-    // 7. ghi lại, bắt Excel tính lại toàn bộ khi mở
-    for (const s of [sChuyen, sCT, sBB, sDN, sLoc].filter(Boolean)) zip.file(s.path, s.xml());
-    let calc = wbDoc.getElementsByTagNameNS(NS, "calcPr")[0];
-    if (!calc) { calc = wbDoc.createElementNS(NS, "calcPr"); wbDoc.documentElement.appendChild(calc); }
-    calc.setAttribute("fullCalcOnLoad", "1");
-    zip.file("xl/workbook.xml", new env.XMLSerializer().serializeToString(wbDoc));
-    if (zip.file("xl/calcChain.xml")) {   // bỏ chuỗi tính cũ để Excel tự dựng lại
-      zip.remove("xl/calcChain.xml");
-      const ct = await zip.file("[Content_Types].xml").async("string");
-      zip.file("[Content_Types].xml", ct.replace(/<Override[^>]*calcChain[^>]*\/>/, ""));
-      const rl = await zip.file("xl/_rels/workbook.xml.rels").async("string");
-      zip.file("xl/_rels/workbook.xml.rels", rl.replace(/<Relationship[^>]*calcChain[^>]*\/>/, ""));
-    }
+    // 7. ghi lại
+    await hoanTat(zip, wbDoc, [sChuyen, sCT, sBB, sDN, sLoc], env);
 
-    // cung đường đang chọn không khớp nội dung tuyến trong file mẫu -> dễ lấy nhầm mẫu của tuyến khác
-    if (opt.cungDuong) {
-      const dau = khoaChu(opt.cungDuong).replace(/\(.*?\)/g, "").split(/\s+đi\s+|\s+về\s+|\s+sang\s+|\s*-\s*/)[0].trim();
-      let chuMau = ""; for (let r = 1; r < 40; r++) { const v = sBB.v("A" + r); if (typeof v === "string" && /xác nhận khối lượng/i.test(v) && /từ|dự án/i.test(v)) chuMau += " " + khoaChu(v); }
-      if (dau && chuMau && !chuMau.includes(dau)) canh.push(`File mẫu ghi tuyến khác với cung đường đang chọn ("${opt.cungDuong}"). Kiểm tra lại có thả đúng hồ sơ cũ của tuyến này không.`);
-    }
     // cảnh báo để người dùng soát
     const theoXeNgay = new Map(); kl.forEach(x => { const k = x.ngay + "|" + x.bs; theoXeNgay.set(k, (theoXeNgay.get(k) || 0) + 1); });
     [...theoXeNgay].filter(([, n]) => n > 1).forEach(([k]) => { const [n, bs] = k.split("|"); canh.push(`Xe ${bs} xuất hiện ${theoXeNgay.get(k)} lần trong ngày ${dmy(tuSerial(+n))}. Kiểm tra có nhập trùng không.`); });
@@ -435,7 +465,118 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     if (Math.abs(tienCT - tienTong) >= 1) canh.push(`Tổng thành tiền bảng kê chi tiết (${Math.round(tienCT).toLocaleString("vi-VN")}) lệch biên bản (${tienTong.toLocaleString("vi-VN")}) do làm tròn từng dòng.`);
 
     const ngayTheo = [...new Set(kl.map(x => x.ngay))].map(n => ({ngay: dmy(tuSerial(n)), chuyen: kl.filter(x => x.ngay === n).reduce((a, x) => a + x.sc, 0), kl: lam(kl.filter(x => x.ngay === n).reduce((a, x) => a + x.sc * x.kl, 0)), xe: new Set(kl.filter(x => x.ngay === n).map(x => x.bs)).size}));
-    return {zip, tom: {dong: kl.length, chuyen: tongChuyen, kl: tongKL, donGia, tien: tienTong, chu, xe: xe.length, tu: dmy(tu), den: dmy(den), ngayLap: dmy(nl), ngayTheo, sucChua: Math.min(sucChua, sucChuaCT)}, canh};
+    return {zip, tom: {dong: kl.length, chuyen: tongChuyen, kl: tongKL, donGia, tien: tienTong, chu, xe: xe.length, tu: dmy(tu), den: dmy(den), ngayLap: dmy(nl), ngayTheo, sucChua: Math.min(sucChua, sucChuaCT), mau: "ECO"}, canh};
+  }
+
+  // ---------- mẫu kiểu TLS: đối chiếu khối lượng, đối chiếu giá trị (theo từng xe), đối chiếu công nợ, đề nghị thanh toán ----------
+  const proper = s => String(s || "").toLowerCase().replace(/(^|[^\p{L}])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+  const fixed0 = n => Math.round(n).toLocaleString("en-US");   // giống hàm FIXED(x,0) của Excel: 477,485,250
+  async function lapTLS(zip, {wbDoc, ds}, klRows, opt, env) {
+    const tim = f => ds.find(s => f(khoaChu(s.ten)));
+    const sKL = tim(t => t === "khối lượng"), sGT = tim(t => t.startsWith("đối chiếu gt")), sCN = tim(t => t.startsWith("đối chiếu cn"));
+    const sDN = tim(t => t === "dntt" || t.startsWith("đề nghị")), sChu = tim(t => t.startsWith("đọc thành chữ"));
+    if (!sKL || !sGT || !sCN || !sDN) throw new Error("Mẫu TLS cần đủ các sheet: Khối lượng, Đối chiếu GT, Đối chiếu CN, DNTT.");
+    const {ds: kl, loi} = docKL(klRows);
+    if (!kl.length) throw new Error("Không có dòng số liệu nào cho lựa chọn này.");
+    kl.sort((a, b) => a.ngay - b.ngay);
+    const canh = [...loi], nhan = opt.cachKL !== "cu";
+    if (!nhan) canh.push("Đang tính theo cách của file cũ: cột Khối lượng chỉ ghi m3/chuyến, KHÔNG nhân số chuyến. Tổng tiền sẽ thấp hơn doanh thu trong sổ.");
+
+    const dongSTT = (s, tu = 1) => { for (let r = tu; r < 60; r++) if (khoaChu(s.v("A" + r)) === "stt") return r; throw new Error("Không thấy dòng tiêu đề STT ở sheet " + s.ten); };
+    const dongTong = (s, tu) => { for (let r = tu; r < tu + 3000; r++) if (/^tổng cộng/.test(khoaChu(s.v("A" + r)))) return r; throw new Error("Không thấy dòng Tổng cộng ở sheet " + s.ten); };
+    const d0 = dongSTT(sKL) + 1, tK = dongTong(sKL, d0), sucChua = tK - d0;
+    const g0 = dongSTT(sGT) + 1, tG = dongTong(sGT, g0), sucChuaXe = tG - g0;
+    if (kl.length > sucChua) throw new Error(`Có ${kl.length} dòng số liệu, sheet Khối lượng chỉ có chỗ cho ${sucChua} dòng. Chọn khoảng ngày ngắn hơn hoặc kéo thêm dòng trong mẫu.`);
+    const xe = [...new Set(kl.map(x => x.bs))];
+    if (xe.length > sucChuaXe) throw new Error(`Có ${xe.length} xe, sheet Đối chiếu GT chỉ có chỗ cho ${sucChuaXe} xe.`);
+
+    // đơn giá: mẫu ghi dạng =155000/1.08 (giá đã VAT chia hệ số thuế)
+    const fGia = sGT.f("F" + g0) || "", mG = /^\s*\+?([\d.]+)\s*\/\s*([\d.]+)\s*$/.exec(fGia);
+    const giaMau = mG ? +mG[1] : Math.round((sGT.v("F" + g0) || 0) * 1.08), heSo = mG ? +mG[2] : 1.08;
+    const donGia = opt.donGia || giaMau;
+    if (opt.donGia && mG && opt.donGia !== giaMau) for (let r = g0; r < tG; r++) { const el = sGT.o("F" + r), f = el && sGT.con(el, "f"); if (f && f.textContent.trim()) f.textContent = `${donGia}/${heSo}`; }
+    const giaTruocThue = donGia / heSo;
+
+    // 1. Khối lượng: mỗi dòng một xe một ngày
+    const tenVT = sKL.v("C" + d0) || "Đất san lấp", dvt = sKL.v("D" + d0) || "M3", viTri = sKL.v("I" + d0) || "";
+    const klDong = x => nhan ? lam(x.sc * x.kl) : x.kl;
+    for (let i = 0; i < sucChua; i++) {
+      const r = d0 + i, x = kl[i];
+      if (x) {
+        sKL.ghi("B" + r, x.ngay, "B" + d0); sKL.ghi("C" + r, tenVT, "C" + d0); sKL.ghi("D" + r, dvt, "D" + d0); sKL.ghi("E" + r, x.bs, "E" + d0);
+        sKL.ghi("F" + r, x.sc, "F" + d0); sKL.ghi("G" + r, klDong(x), "G" + d0); if (sKL.o("H" + r)) sKL.ghi("H" + r, null); sKL.ghi("I" + r, viTri, "I" + d0);
+        sKL.an(r, false);
+      } else { ["B", "C", "D", "E", "F", "G", "H", "I"].forEach(c => sKL.o(c + r) && sKL.ghi(c + r, null)); sKL.an(r, true); }
+    }
+    const tongChuyen = kl.reduce((a, x) => a + x.sc, 0), tongKL = lam(kl.reduce((a, x) => a + klDong(x), 0));
+    const tu = tuSerial(kl[0].ngay), den = tuSerial(kl[kl.length - 1].ngay);
+    sKL.ghi("F" + tK, tongChuyen); sKL.ghi("G" + tK, tongKL);
+    const tieuDeNgay = `Từ ngày ${dmy(tu)} đến ngày ${dmy(den)}`;
+    for (let r = 1; r < d0; r++) { const f = sKL.f("A" + r); if (f && /MIN\(/i.test(f)) sKL.ghi("A" + r, tieuDeNgay); }
+
+    // 2. Đối chiếu giá trị: mỗi xe một dòng
+    let tongTruoc = 0, tongSau = 0;
+    for (let i = 0; i < sucChuaXe; i++) {
+      const r = g0 + i, bs = xe[i], rKL = d0 + i;
+      const ten = kl[i] ? tenVT : "", vt = kl[i] ? viTri : "";
+      if (sGT.f("B" + r)) sGT.ghi("B" + r, ten); if (sGT.f("K" + r)) sGT.ghi("K" + r, vt);
+      if (bs) {
+        const cua = kl.filter(x => x.bs === bs), sc = cua.reduce((a, x) => a + x.sc, 0), e = lam(cua.reduce((a, x) => a + klDong(x), 0));
+        const g = giaTruocThue * e, j = g * heSo; tongTruoc += g; tongSau += j;
+        sGT.ghi("C" + r, bs, "C" + g0); sGT.ghi("D" + r, sc); sGT.ghi("E" + r, e); sGT.ghi("F" + r, giaTruocThue);
+        sGT.ghi("G" + r, g); sGT.ghi("I" + r, g); sGT.ghi("J" + r, j);
+        sGT.an(r, false);
+      } else {
+        if (sGT.o("C" + r)) sGT.ghi("C" + r, null);
+        ["D", "E", "G", "I", "J"].forEach(c => sGT.f(c + r) && sGT.ghi(c + r, 0)); if (sGT.f("F" + r)) sGT.ghi("F" + r, giaTruocThue);
+        sGT.an(r, true);
+      }
+    }
+    sGT.ghi("D" + tG, tongChuyen); sGT.ghi("E" + tG, tongKL); sGT.ghi("G" + tG, tongTruoc); sGT.ghi("I" + tG, tongTruoc); sGT.ghi("J" + tG, tongSau);
+    for (let r = 1; r < g0; r++) { if (sGT.f("A" + r) && /khối lượng/i.test(sGT.f("A" + r))) sGT.ghi("A" + r, tieuDeNgay); if (sGT.f("D" + r) && /MAX\(/i.test(sGT.f("D" + r))) sGT.ghi("D" + r, kl[kl.length - 1].ngay); }
+
+    // 3. Đối chiếu công nợ
+    const rCN = {}; for (let r = 1; r < 60; r++) { const f = sCN.f("F" + r) || ""; if (/J\d+/.test(f) && /GT/i.test(f)) rCN.ps = r; if (/^\+?F\d+-F\d+$/.test(f.trim())) rCN.cuoi = r; if (/^SUM\(F(\d+):F(\d+)\)$/.test(f.trim())) (rCN.sum = rCN.sum || []).push(r); }
+    sCN.ghi("F" + rCN.ps, tongSau);
+    const giaTri = r => { const f = (sCN.f("F" + r) || "").trim(), m = /^SUM\(F(\d+):F(\d+)\)$/.exec(f); if (!m) return +sCN.v("F" + r) || 0; let t = 0; for (let k = +m[1]; k <= +m[2]; k++) t += +sCN.v("F" + k) || 0; return t; };
+    (rCN.sum || []).forEach(r => sCN.ghi("F" + r, giaTri(r)));
+    let duCuoi = tongSau;
+    if (rCN.cuoi) { const m = /F(\d+)-F(\d+)/.exec(sCN.f("F" + rCN.cuoi)); duCuoi = (+sCN.v("F" + m[1]) || 0) - (+sCN.v("F" + m[2]) || 0); sCN.ghi("F" + rCN.cuoi, duCuoi); }
+    for (let r = 1; r < 12; r++) for (const c of ["D", "E"]) { const f = sCN.f(c + r); if (f && /MAX\(/i.test(f)) sCN.ghi(c + r, kl[kl.length - 1].ngay); }
+    for (let r = 1; r < 12; r++) { const f = sCN.f("A" + r); if (f && /khối lượng/i.test(f)) sCN.ghi("A" + r, tieuDeNgay); }
+    const benThue = sCN.v("B8"), benChoThue = sCN.v("B12");
+    for (let r = 20; r < 60; r++) { const f = sCN.f("A" + r); if (f && /Kết luận/i.test(f)) sCN.ghi("A" + r, `Kết luận: Tính đến ngày ${dmy(den)}, ${proper(benThue)} còn phải thanh toán cho ${proper(benChoThue)} số tiền là: ${fixed0(duCuoi)} đồng.`); }
+
+    // 4. Đề nghị thanh toán (thường 90%)
+    let deNghi = duCuoi, tyLe = 1;
+    for (let r = 1; r < 40; r++) for (const c of ["A", "B", "C", "D"]) {
+      const f = sDN.f(c + r); if (!f) continue;
+      if (/F\d+\s*\*\s*([\d.]+)%/.test(f)) { tyLe = +/\*\s*([\d.]+)%/.exec(f)[1] / 100; deNghi = duCuoi * tyLe; sDN.ghi(c + r, deNghi); }
+      else if (/^'?Đối chiếu CN'?!E\d+$/i.test(f.replace(/^\+/, ""))) sDN.ghi(c + r, kl[kl.length - 1].ngay);
+      else if (/công nợ ngày/i.test(f)) sDN.ghi(c + r, `Căn cứ biên bản đối chiếu công nợ ngày ${dmy(den)}`);
+    }
+
+    // 5. Bằng chữ (sheet ĐỌC THÀNH CHỮ và các ô lấy từ đó)
+    const soTheoNguon = f => /J\d+/.test(f) && /GT/i.test(f) ? tongSau : /CN/i.test(f) ? duCuoi : /C14|DNTT/i.test(f) ? deNghi : null;
+    const giaTriB = {};
+    if (sChu) {
+      for (let r = 1; r < 60; r++) { const f = sChu.f("B" + r); if (f && /!/.test(f)) { const v = soTheoNguon(f); if (v !== null) { sChu.ghi("B" + r, v); giaTriB[r] = v; } } }
+      for (let r = 1; r < 60; r++) { const f = sChu.f("J" + r), m = f && /IF\(B(\d+)=0/.exec(f); if (m && giaTriB[m[1]] !== undefined) sChu.ghi("J" + r, bangChu(giaTriB[m[1]], "phay")); }
+    }
+    const chuCua = f => { const m = /ĐỌC THÀNH CHỮ'?!J(\d+)/i.exec(f); if (!m || !sChu) return null; return sChu.v("J" + m[1]); };
+    for (const s of [sGT, sCN, sDN]) for (const [n, row] of s.rows) for (let c = row.firstChild; c; c = c.nextSibling) {
+      if (c.nodeType !== 1) continue; const f = s.con(c, "f"); if (!f || !/ĐỌC THÀNH CHỮ/i.test(f.textContent)) continue;
+      const v = chuCua(f.textContent); if (v) s.ghi(c.getAttribute("r"), v);
+    }
+
+    await hoanTat(zip, wbDoc, [sKL, sGT, sCN, sDN, sChu], env);
+
+    const theoXeNgay = new Map(); kl.forEach(x => { const k = x.ngay + "|" + x.bs; theoXeNgay.set(k, (theoXeNgay.get(k) || 0) + 1); });
+    [...theoXeNgay].filter(([, n]) => n > 1).forEach(([k]) => { const [n, bs] = k.split("|"); canh.push(`Xe ${bs} xuất hiện ${theoXeNgay.get(k)} lần trong ngày ${dmy(tuSerial(+n))}. Kiểm tra có nhập trùng không.`); });
+    const klXe = new Map(); kl.forEach(x => { if (klXe.has(x.bs) && klXe.get(x.bs) !== x.kl) canh.push(`Xe ${x.bs} có 2 mức KL/chuyến khác nhau: ${klXe.get(x.bs)} và ${x.kl} m3.`); klXe.set(x.bs, x.kl); });
+    const ngayTheo = [...new Set(kl.map(x => x.ngay))].map(n => { const c = kl.filter(x => x.ngay === n); return {ngay: dmy(tuSerial(n)), chuyen: c.reduce((a, x) => a + x.sc, 0), kl: lam(c.reduce((a, x) => a + klDong(x), 0)), xe: new Set(c.map(x => x.bs)).size}; });
+    return {zip, canh, tom: {mau: "TLS", dong: kl.length, chuyen: tongChuyen, kl: tongKL, donGia, tien: Math.round(tongSau), chu: bangChu(tongSau, "phay"),
+      deNghi: Math.round(deNghi), tyLe, chuDeNghi: bangChu(deNghi, "phay"), xe: xe.length, tu: dmy(tu), den: dmy(den), ngayLap: dmy(den), ngayTheo, sucChua, nhan}};
   }
 
   function tenFileMoi(tenCu, tom) {
@@ -448,32 +589,37 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     return t;
   }
 
-  root.HSTT = {lap, bangChu, docKL, docTheoDoi, locTheoDoi, laTheoDoi, tenFileMoi, ngaySerial, tuSerial};
+  const docBenA = async (zip, env) => nhanMau((await moSo(zip, env)).ds);   // {benA, tuyen} trong hồ sơ mẫu (đã chuẩn hoá)
+  const dauTuyen = cd => khoaChu(cd).replace(/\(.*?\)/g, "").split(/\s+đi\s+|\s+về\s+|\s+sang\s+|\s*-\s*/)[0].trim();
+  root.HSTT = {docBenA, dauTuyen, lap, bangChu, docKL, docTheoDoi, locTheoDoi, laTheoDoi, tenFileMoi, ngaySerial, tuSerial};
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
 (function () {
   const $ = s => document.querySelector(s);
-  let mau = null, kl = null, ketQua = null, td = null, canhLoc = [];
+  let mau = null, kl = null, ketQua = null, td = null, canhLoc = [], tienSo = null, chuMau = "", tuyenMau = "";
   const loi = m => { $("#kq").hidden = true; $("#loi").textContent = m; $("#loi").hidden = false; };
   const ngayChu = n => { const d = HSTT.tuSerial(n); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`; };
   const opt = (el, ds, chon) => { el.innerHTML = ds.map(([v, t]) => `<option value="${String(v).replace(/"/g, "&quot;")}">${t}</option>`).join(""); if (chon !== undefined && ds.some(d => String(d[0]) === String(chon))) el.value = chon; };
   // bộ lọc mã KH -> cung đường -> ngày (mặc định: ngày gần nhất có số liệu)
   function dungLoc(cap) {
     const ds = td.ds;
-    if (!cap) { const moiNhat = Math.max(...ds.map(x => x.ngay)); const kh0 = ds.filter(x => x.ngay === moiNhat)[0].kh;
+    if (!cap) { const moiNhat = Math.max(...ds.map(x => x.ngay));
+      const khMau = [...new Set(ds.map(x => x.kh))].find(k => chuMau && k.normalize("NFC").toLowerCase().split(/[_\s-]+/).filter(t => t.length >= 3).some(t => new RegExp("(^|[^\\p{L}])" + t + "($|[^\\p{L}])", "u").test(chuMau)));
+      const kh0 = khMau || ds.filter(x => x.ngay === moiNhat)[0].kh;
       opt($("#lKH"), [...new Set(ds.map(x => x.kh))].sort().map(k => [k, k]), kh0); }
     const kh = $("#lKH").value, dsKH = ds.filter(x => x.kh === kh);
     if (!cap || cap === "kh") {   // cung đường có số liệu gần nhất lên đầu và được chọn sẵn
       const cuoi = new Map(); dsKH.forEach(x => cuoi.set(x.cd, Math.max(cuoi.get(x.cd) || 0, x.ngay)));
       const cds = [...cuoi].sort((a, b) => b[1] - a[1]).map(([c]) => [c, c]);
-      opt($("#lCD"), cds, cds[0][0]);
+      const cdMau = cds.find(([c]) => tuyenMau && HSTT.dauTuyen(c) && tuyenMau.includes(HSTT.dauTuyen(c)));   // ưu tiên tuyến ghi trong hồ sơ mẫu
+      opt($("#lCD"), cds, (cdMau || cds[0])[0]);
     }
     const cd = $("#lCD").value, ngay = [...new Set(dsKH.filter(x => x.cd === cd).map(x => x.ngay))].sort((a, b) => a - b);
     if (cap !== "ngay") { const cuoi = ngay[ngay.length - 1]; opt($("#lTu"), ngay.map(n => [n, ngayChu(n)]), cuoi); opt($("#lDen"), ngay.map(n => [n, ngayChu(n)]), cuoi); }
     if (+$("#lDen").value < +$("#lTu").value) $("#lDen").value = $("#lTu").value;
     const l = HSTT.locTheoDoi(td, {kh, cd, tu: +$("#lTu").value, den: +$("#lDen").value});
-    kl = {ten: "", rows: l.rows}; canhLoc = l.canh;
+    kl = {ten: "", rows: l.rows}; canhLoc = l.canh; tienSo = l.tien;
     if (l.gia.length) { $("#donGia").dataset.tuDuLieu = Math.max(...l.gia); $("#donGia").placeholder = so(Math.max(...l.gia)) + " (theo giá bán ra)"; } else delete $("#donGia").dataset.tuDuLieu;
     $("#lSo").textContent = `${l.so} dòng`;
     $("#loc").hidden = false;
@@ -497,6 +643,12 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
       const wb = XLSX.read(mau.buf, {type: "array"}); const sn = wb.SheetNames.find(n => /^bb xác nhận/i.test(n.trim()));
       const v = sn && wb.Sheets[sn]["F18"] && wb.Sheets[sn]["F18"].v;
       if (typeof v === "number") $("#donGia").placeholder = so(v) + " (theo hồ sơ cũ)";
+      // mẫu TLS: ngày biên bản lấy theo ngày cuối kỳ, có lựa chọn cách tính khối lượng
+      const tls = wb.SheetNames.some(n => n.trim().toLowerCase() === "khối lượng") && wb.SheetNames.some(n => /^đối chiếu gt/i.test(n.trim()));
+      $("#nhanCach").hidden = !tls; $("#nhanNgay").hidden = tls;
+      // chữ ở phần đầu các tờ của mẫu, để tự chọn đúng mã KH
+      const nm = await HSTT.docBenA(await JSZip.loadAsync(mau.buf.slice(0)), {DOMParser, XMLSerializer}); chuMau = nm.benA; tuyenMau = nm.tuyen;
+      if (td) dungLoc();
     } catch (e) {}
     chay();
   });
@@ -514,7 +666,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     else { kl = {ten: f.name, rows: sheets[0].rows}; $("#tKL").textContent += " · file khối lượng đã lọc sẵn (muốn chọn mã KH, cung đường, ngày thì thả file Google Sheet tải về)"; }
     chay();
   });
-  ["#ngayLap", "#donGia"].forEach(id => $(id).addEventListener("change", chay));
+  ["#ngayLap", "#donGia", "#cachKL"].forEach(id => $(id).addEventListener("change", chay));
 
   async function chay() {
     $("#loi").hidden = true;
@@ -523,14 +675,16 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
       const [y, m, d] = $("#ngayLap").value.split("-").map(Number);
       const dg = +String($("#donGia").value).replace(/[^\d]/g, "") || +$("#donGia").dataset.tuDuLieu || 0;
       const zip = await JSZip.loadAsync(mau.buf.slice(0));
-      const r = await HSTT.lap(zip, kl.rows, {ngayLap: new Date(y, m - 1, d), donGia: dg || undefined, cungDuong: td ? $("#lCD").value : "", maKH: td ? $("#lKH").value : ""}, {DOMParser, XMLSerializer});
+      const r = await HSTT.lap(zip, kl.rows, {ngayLap: new Date(y, m - 1, d), donGia: dg || undefined, cachKL: $("#cachKL").value, cungDuong: td ? $("#lCD").value : "", maKH: td ? $("#lKH").value : ""}, {DOMParser, XMLSerializer});
       ketQua = r; const t = r.tom;
       $("#kqTieuDe").textContent = t.tu === t.den ? `Hồ sơ ngày ${t.tu}` : `Hồ sơ từ ${t.tu} đến ${t.den}`;
-      $("#tong").innerHTML = `<div><b>${so(t.chuyen)}</b>chuyến</div><div><b>${so(t.kl)}</b>m3</div><div><b>${t.xe}</b>xe</div><div><b>${so(t.tien)}</b>đồng (đơn giá ${so(t.donGia)})</div>`;
-      $("#chu").innerHTML = `<span>Bằng chữ</span>${t.chu}`;
+      $("#tong").innerHTML = `<div><b>${so(t.chuyen)}</b>chuyến</div><div><b>${so(t.kl)}</b>m3</div><div><b>${t.xe}</b>xe</div><div><b>${so(t.tien)}</b>đồng${t.mau === "TLS" ? " sau thuế" : ""} (đơn giá ${so(t.donGia)})</div>` +
+        (t.mau === "TLS" ? `<div><b>${so(t.deNghi)}</b>đồng đề nghị thanh toán (${Math.round(t.tyLe * 100)}%)</div>` : "");
+      $("#chu").innerHTML = `<span>Bằng chữ</span>${t.chu}` + (t.mau === "TLS" ? `<span style="margin-top:8px">Bằng chữ số đề nghị thanh toán</span>${t.chuDeNghi}<span style="margin-top:8px">Mẫu TLS: ngày biên bản lấy theo ngày cuối kỳ (${t.den}).</span>` : "");
       $("#theoNgay").innerHTML = `<tr><th>Ngày</th><th>Số xe</th><th>Số chuyến</th><th>Khối lượng (m3)</th><th>Thành tiền</th></tr>` +
         t.ngayTheo.map(n => `<tr><td>${n.ngay}</td><td class="n">${n.xe}</td><td class="n">${so(n.chuyen)}</td><td class="n">${so(n.kl)}</td><td class="n">${so(Math.round(n.kl * t.donGia))}</td></tr>`).join("");
       const canh = canhLoc.concat(r.canh);
+      if (tienSo !== null && td && Math.abs(t.tien - tienSo) >= 1000) canh.unshift(`Tổng tiền hồ sơ (${so(t.tien)}đ) lệch doanh thu bán ra trong sổ cho cùng kỳ (${so(tienSo)}đ), chênh ${so(t.tien - tienSo)}đ. Kiểm tra lại trước khi gửi.`);
       $("#canh").hidden = !canh.length;
       $("#canh").innerHTML = `<b>Cần xem lại</b><ul>${canh.map(c => `<li>${c.replace(/</g, "&lt;")}</li>`).join("")}</ul>`;
       $("#kq").hidden = false;
