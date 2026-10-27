@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lập hồ sơ thanh toán</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800&display=swap">
+<style>
+:root{--bg:#f4f6f3;--surface:#fff;--ink:#1b2620;--muted:#5d6a63;--line:#dbe2dc;--xl:#107c41;--xl-ink:#fff;--xl-soft:#e1f1e7;--sua:#fff3c4;--sua-ink:#7a5a00;--loi:#fde4e1;--loi-ink:#b3261e;
+  --f:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+@media (prefers-color-scheme:dark){:root{--bg:#111613;--surface:#18201b;--ink:#e6ece8;--muted:#9aa8a0;--line:#2b3630;--xl:#3fbf7a;--xl-ink:#0b1a12;--xl-soft:#173324;--sua:#3b3214;--sua-ink:#f2d27a;--loi:#3d1f1c;--loi-ink:#ff8f84;color-scheme:dark}}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--f)}
+.wrap{max-width:980px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-left)) 64px;display:grid;gap:18px}
+h1{margin:0;font-size:clamp(24px,4vw,34px);line-height:1.15;font-weight:800;letter-spacing:-.02em}h1 span{color:var(--xl)}
+header p{margin:6px 0 0;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:14px}
+h2{margin:0;font-size:17px}
+.hai{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:18px;display:grid;gap:8px;background:var(--bg);align-content:start}
+.drop.over{border-color:var(--xl);background:var(--xl-soft)}
+.drop.ok{border-style:solid;border-color:var(--xl)}
+.drop b{font-size:15px}.drop .ten{font-size:13.5px;color:var(--xl);font-weight:600;overflow-wrap:anywhere}
+.muted{color:var(--muted);font-size:13.5px}
+.btn,button{font:600 14.5px var(--f);border-radius:8px;padding:10px 16px;cursor:pointer;border:1.5px solid var(--xl);background:var(--xl);color:var(--xl-ink);display:inline-block;justify-self:start}
+.btn.ghost{background:transparent;color:var(--xl)}
+button:disabled{opacity:.5;cursor:default}
+.filebtn input{position:absolute;width:1px;height:1px;opacity:0}
+.opts{display:flex;gap:10px 22px;flex-wrap:wrap;align-items:end}
+.opts label{display:grid;gap:4px;font-size:13.5px;color:var(--muted)}
+input[type=date],input[type=text]{font:15px var(--f);padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
+.tong{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tong div{border-radius:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--line)}
+.tong b{display:block;font-size:24px;line-height:1.15;font-variant-numeric:tabular-nums;color:var(--xl)}
+.chu{background:var(--xl-soft);border-radius:10px;padding:12px 14px;font-weight:600}
+.chu span{display:block;font-weight:400;font-size:12.5px;color:var(--muted)}
+.bang{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:left}th{background:var(--bg);font-size:12.5px;color:var(--muted)}td.n{text-align:right}
+.canh{background:var(--sua);color:var(--sua-ink);border-radius:10px;padding:10px 14px;font-size:14px}
+.canh ul{margin:4px 0 0;padding-left:20px}
+.loi{background:var(--loi);color:var(--loi-ink);border-radius:10px;padding:10px 14px;font-weight:600}
+ol.buoc{margin:0;padding-left:20px;color:var(--muted);font-size:14px;display:grid;gap:2px}
+footer{font-size:12.5px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Lập <span>hồ sơ thanh toán</span> vận chuyển</h1>
+    <p>Thả file hồ sơ kỳ trước và file khối lượng xe mới, máy ra bộ hồ sơ mới: bảng kê số chuyến, bảng kê chi tiết, biên bản xác nhận, giấy đề nghị thanh toán. Giữ nguyên mẫu, định dạng, vùng in. File chỉ xử lý trên máy này.</p>
+  </header>
+
+  <section class="card">
+    <div class="hai">
+      <div class="drop" id="dMau">
+        <b>1 · File hồ sơ thanh toán lần trước</b>
+        <span class="muted">Dùng làm mẫu: thông tin hai bên, đơn giá, tuyến đường giữ nguyên.</span>
+        <span class="ten" id="tMau"></span>
+        <label class="btn ghost filebtn">Chọn file<input type="file" id="fMau" accept=".xlsx"></label>
+      </div>
+      <div class="drop" id="dKL">
+        <b>2 · File khối lượng xe mới</b>
+        <span class="muted">4 cột: Ngày · Biển số xe · Số chuyến · KL/1 chuyến (M3)</span>
+        <span class="ten" id="tKL"></span>
+        <label class="btn ghost filebtn">Chọn file<input type="file" id="fKL" accept=".xlsx,.xls,.csv"></label>
+      </div>
+    </div>
+    <div class="opts">
+      <label>Ngày lập hồ sơ<input type="date" id="ngayLap"></label>
+      <label>Đơn giá (đã VAT, đồng/m3)<input type="text" id="donGia" inputmode="numeric" placeholder="lấy theo hồ sơ cũ" size="26"></label>
+    </div>
+  </section>
+
+  <div class="loi" id="loi" hidden></div>
+
+  <section class="card" id="kq" hidden>
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h2 id="kqTieuDe">Kết quả</h2><button id="tai" type="button">Tải hồ sơ (.xlsx)</button></div>
+    <div class="tong" id="tong"></div>
+    <div class="chu" id="chu"></div>
+    <div class="bang"><table id="theoNgay"></table></div>
+    <div class="canh" id="canh" hidden></div>
+    <ol class="buoc">
+      <li>Mở file tải về bằng Excel, các ô công thức tự tính lại.</li>
+      <li>Soát nhanh tổng tiền và số tiền bằng chữ ở biên bản, giấy đề nghị.</li>
+      <li>In như mọi khi: dòng trống trong bảng kê chi tiết đã được ẩn sẵn.</li>
+    </ol>
+  </section>
+
+  <footer>Công cụ chạy ngay trong trình duyệt, không gửi file đi đâu.</footer>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>/* Lập hồ sơ thanh toán vận chuyển: lấy file HSTT kỳ trước làm mẫu, đổ số liệu khối lượng mới vào.
+   Sửa thẳng XML trong file .xlsx nên giữ nguyên định dạng, đường kẻ, vùng in, sheet ẩn của mẫu. */
+(function (root) {
+  "use strict";
+  const NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+  const RNS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+
+  // ---------- số tiền bằng chữ ----------
+  const CS = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
+  function doc3(n, du) {   // du: đọc đủ "không trăm", "linh" khi không phải nhóm đầu
+    const tr = Math.floor(n / 100), ch = Math.floor(n / 10) % 10, dv = n % 10, o = [];
+    if (tr || du) o.push(CS[tr] + " trăm");
+    if (ch === 0) { if (dv && (tr || du)) o.push("linh"); }
+    else if (ch === 1) o.push("mười");
+    else o.push(CS[ch] + " mươi");
+    if (dv) o.push(dv === 1 && ch > 1 ? "mốt" : dv === 5 && ch > 0 ? "lăm" : CS[dv]);
+    return o.join(" ");
+  }
+  function bangChu(so) {
+    so = Math.round(Math.abs(so));
+    if (!so) return "Không đồng";
+    const DV = ["", " nghìn", " triệu", " tỷ"], nhom = [];
+    let n = so; while (n > 0) { nhom.push(n % 1000); n = Math.floor(n / 1000); }
+    const o = [];
+    for (let i = nhom.length - 1; i >= 0; i--) {
+      const g = nhom[i];
+      if (!g) { if (i % 3 === 0 && i > 0 && o.length) o.push("tỷ"); continue; }
+      const dv = i === 0 ? "" : i % 3 === 0 ? " tỷ" : DV[i % 3];
+      o.push(doc3(g, i < nhom.length - 1) + dv);
+    }
+    const s = o.join(" ").replace(/\s+/g, " ").replace(/ tỷ tỷ/g, " tỷ").trim() + " đồng chẵn";
+    return s[0].toUpperCase() + s.slice(1);
+  }
+
+  // ---------- tiện ích ô ----------
+  const colNum = s => s.split("").reduce((a, c) => a * 26 + c.charCodeAt(0) - 64, 0);
+  const colChu = n => { let s = ""; while (n) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+  const tachO = ref => { const m = /^([A-Z]+)(\d+)$/.exec(ref); return {c: colNum(m[1]), r: +m[2]}; };
+  const ngaySerial = d => Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(1899, 11, 30)) / 864e5);
+  const tuSerial = n => { const d = new Date(Date.UTC(1899, 11, 30) + n * 864e5); return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); };
+  const p2 = n => String(n).padStart(2, "0");
+  const dmy = d => `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  const lam = x => Math.round(x * 1e6) / 1e6;
+  const khoaChu = s => String(s || "").normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim();
+
+  class Sheet {
+    constructor(ten, path, xml, sst, env) {
+      this.ten = ten; this.path = path; this.env = env;
+      this.doc = new env.DOMParser().parseFromString(xml, "application/xml");
+      this.sst = sst; this.rows = new Map();
+      const sd = this.doc.getElementsByTagNameNS(NS, "sheetData")[0]; this.sd = sd;
+      for (let r = sd.firstChild; r; r = r.nextSibling) if (r.nodeType === 1) this.rows.set(+r.getAttribute("r"), r);
+    }
+    row(n, tao) {
+      let r = this.rows.get(n);
+      if (r || !tao) return r || null;
+      r = this.doc.createElementNS(NS, "row"); r.setAttribute("r", n);
+      let sau = null; for (const [k, el] of this.rows) if (k > n && (!sau || k < +sau.getAttribute("r"))) sau = el;
+      this.sd.insertBefore(r, sau); this.rows.set(n, r); return r;
+    }
+    o(ref, tao, styleTu) {
+      const {c, r} = tachO(ref), row = this.row(r, tao);
+      if (!row) return null;
+      let sau = null;
+      for (let x = row.firstChild; x; x = x.nextSibling) {
+        if (x.nodeType !== 1) continue;
+        if (x.getAttribute("r") === ref) return x;
+        if (!sau && tachO(x.getAttribute("r")).c > c) sau = x;
+      }
+      if (!tao) return null;
+      const el = this.doc.createElementNS(NS, "c"); el.setAttribute("r", ref);
+      if (styleTu) { const m = this.o(styleTu); if (m && m.getAttribute("s")) el.setAttribute("s", m.getAttribute("s")); }
+      row.insertBefore(el, sau); return el;
+    }
+    con(el, tag) { for (let x = el.firstChild; x; x = x.nextSibling) if (x.nodeType === 1 && x.localName === tag) return x; return null; }
+    cot(el, tag) { const x = this.con(el, tag); if (x) el.removeChild(x); }
+    f(ref) { const el = this.o(ref); const f = el && this.con(el, "f"); return f ? f.textContent : null; }
+    v(ref) {   // giá trị (kể cả kết quả lưu sẵn của công thức)
+      const el = this.o(ref); if (!el) return null;
+      const t = el.getAttribute("t"), v = this.con(el, "v");
+      if (t === "inlineStr") { const is = this.con(el, "is"); return is ? is.textContent : ""; }
+      if (!v) return null;
+      if (t === "s") return this.sst[+v.textContent];
+      if (t === "str" || t === "e") return v.textContent;
+      if (t === "b") return v.textContent === "1";
+      return +v.textContent;
+    }
+    ghi(ref, val, styleTu) {   // ghi giá trị, giữ công thức nếu có (khi đó là kết quả lưu sẵn)
+      const el = this.o(ref, true, styleTu), coF = !!this.con(el, "f");
+      this.cot(el, "v"); this.cot(el, "is"); el.removeAttribute("t");
+      if (val === null || val === undefined || val === "") { if (coF) { el.setAttribute("t", "str"); const v = this.doc.createElementNS(NS, "v"); el.appendChild(v); } return; }
+      if (typeof val === "number") { const v = this.doc.createElementNS(NS, "v"); v.textContent = String(lam(val)); el.appendChild(v); return; }
+      if (coF) { el.setAttribute("t", "str"); const v = this.doc.createElementNS(NS, "v"); v.textContent = val; el.appendChild(v); return; }
+      el.setAttribute("t", "inlineStr");
+      const is = this.doc.createElementNS(NS, "is"), t = this.doc.createElementNS(NS, "t");
+      t.setAttribute("xml:space", "preserve"); t.textContent = val; is.appendChild(t); el.appendChild(is);
+    }
+    an(n, an) { const r = this.row(n, an); if (!r) return; if (an) r.setAttribute("hidden", "1"); else r.removeAttribute("hidden"); }
+    xml() { return new this.env.XMLSerializer().serializeToString(this.doc); }
+  }
+
+  async function moSo(zip, env) {
+    const doc = s => new env.DOMParser().parseFromString(s, "application/xml");
+    const wb = doc(await zip.file("xl/workbook.xml").async("string"));
+    const rels = doc(await zip.file("xl/_rels/workbook.xml.rels").async("string"));
+    const tgt = {}; Array.prototype.slice.call(rels.getElementsByTagName("Relationship")).forEach(r => tgt[r.getAttribute("Id")] = r.getAttribute("Target"));
+    const sst = [];
+    if (zip.file("xl/sharedStrings.xml")) {
+      const s = doc(await zip.file("xl/sharedStrings.xml").async("string"));
+      Array.prototype.slice.call(s.getElementsByTagNameNS(NS, "si")).forEach(si => sst.push(Array.prototype.slice.call(si.getElementsByTagNameNS(NS, "t")).map(t => t.textContent).join("")));
+    }
+    const ds = [];
+    for (const s of Array.prototype.slice.call(wb.getElementsByTagNameNS(NS, "sheet"))) {
+      let p = tgt[s.getAttributeNS(RNS, "id") || s.getAttribute("r:id")]; p = p.startsWith("/") ? p.slice(1) : "xl/" + p;
+      ds.push(new Sheet(s.getAttribute("name"), p, await zip.file(p).async("string"), sst, env));
+      ds[ds.length - 1].an_ = s.getAttribute("state") === "hidden";
+    }
+    return {wbDoc: wb, ds};
+  }
+
+  // ---------- đọc file khối lượng: Ngày | Biển số | Số chuyến | KL/1 chuyến ----------
+  function docKL(rows) {
+    const hd = rows[0].map(khoaChu);
+    const tim = (...ks) => hd.findIndex(h => ks.some(k => h.includes(k)));
+    const cN = tim("ngày"), cB = tim("biển"), cS = tim("số chuyến", "chuyến"), cK = tim("kl", "khối lượng");
+    if ([cN, cB, cS, cK].some(i => i < 0)) throw new Error("File khối lượng cần đủ 4 cột: Ngày, Biển số xe, Số chuyến, KL/1 chuyến. Đang thấy: " + rows[0].join(" | "));
+    const ds = [], loi = [];
+    rows.slice(1).forEach((r, i) => {
+      if (!r || r.every(v => v === null || v === undefined || v === "")) return;
+      let n = r[cN];
+      if (n instanceof Date) n = Math.round((n.getTime() - n.getTimezoneOffset() * 6e4) / 864e5 + 25569);   // ngày đọc từ Excel có thể lệch vài giây do múi giờ
+      else if (typeof n === "string") { const m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(n.trim()); n = m ? ngaySerial(new Date(+m[3], +m[2] - 1, +m[1])) : NaN; }
+      const bs = String(r[cB] || "").trim().toUpperCase(), sc = +r[cS], kl = +r[cK];
+      if (!bs || !isFinite(n) || !isFinite(sc) || !isFinite(kl)) { loi.push(`Dòng ${i + 2}: thiếu hoặc sai dữ liệu (${r.join(" | ")})`); return; }
+      ds.push({ngay: n, bs, sc, kl});
+    });
+    return {ds, loi};
+  }
+
+  // ---------- lập hồ sơ ----------
+  async function lap(zip, klRows, opt, env) {
+    const {wbDoc, ds} = await moSo(zip, env);
+    const tim = (f, them) => ds.find(s => f(khoaChu(s.ten)) && (them ? them(s) : true));
+    const sChuyen = tim(t => t.startsWith("bảng kê số chuyến") && !t.includes("("), s => !s.an_) || tim(t => t.startsWith("bảng kê số chuyến") && !t.includes("("));
+    const sCT = tim(t => t.startsWith("bảng kê chi tiết"), s => !s.an_);
+    const sBB = tim(t => t.startsWith("bb xác nhận"), s => !s.an_);
+    const sDN = tim(t => t.startsWith("đề nghị"), s => !s.an_);
+    const sLoc = tim(t => t.startsWith("lọc xe"));
+    if (!sChuyen || !sCT || !sBB || !sDN) throw new Error("File mẫu thiếu sheet. Cần các sheet: bảng kê số chuyến, bảng kê chi tiết KL, BB xác nhận kl và giá trị, Đề nghị tt.");
+
+    const {ds: kl, loi} = docKL(klRows);
+    if (!kl.length) throw new Error("File khối lượng không có dòng dữ liệu nào.");
+    kl.sort((a, b) => a.ngay - b.ngay);   // giữ thứ tự xe trong từng ngày như file gốc (sort ổn định)
+    const canh = [...loi];
+
+    // tìm vùng dữ liệu của bảng kê số chuyến: từ dòng sau tiêu đề "STT" đến dòng trước dòng tổng
+    const dongDau = s => { for (let r = 1; r < 60; r++) if (khoaChu(s.v("A" + r)) === "stt") return r + 1; throw new Error("Không thấy dòng tiêu đề STT ở sheet " + s.ten); };
+    const dongTong = (s, cot, tu) => { for (let r = tu; r < tu + 3000; r++) { const f = s.f(cot + r); if (f && /SUM\(/i.test(f)) return r; } throw new Error("Không thấy dòng TỔNG CỘNG ở sheet " + s.ten); };
+    const d0 = dongDau(sChuyen), tC = dongTong(sChuyen, "H", d0), sucChua = tC - d0;
+    const d0c = dongDau(sCT), tCT = dongTong(sCT, "H", d0c), sucChuaCT = tCT - d0c;
+    if (kl.length > Math.min(sucChua, sucChuaCT)) throw new Error(`File khối lượng có ${kl.length} dòng, mẫu chỉ có chỗ cho ${Math.min(sucChua, sucChuaCT)} dòng. Cần kéo thêm dòng trong file mẫu.`);
+    const tenHang = sChuyen.v("E" + d0) || "Đất";
+    const donGia = opt.donGia || sCT.v("I" + d0c) || sBB.v("F18");
+
+    // 1. bảng kê số chuyến
+    for (let i = 0; i < sucChua; i++) {
+      const r = d0 + i, x = kl[i];
+      if (x) {
+        const dauNgay = i === 0 || kl[i - 1].ngay !== x.ngay;
+        sChuyen.ghi("B" + r, dauNgay ? x.ngay : null, "B" + d0);
+        sChuyen.ghi("C" + r, x.bs, "C" + d0); sChuyen.ghi("E" + r, tenHang, "E" + d0);
+        sChuyen.ghi("F" + r, x.sc, "F" + d0); sChuyen.ghi("G" + r, x.kl, "G" + d0);
+        sChuyen.ghi("H" + r, lam(x.sc * x.kl), "H" + d0); sChuyen.ghi("I" + r, x.ngay, "I" + d0);
+      } else ["B", "C", "F", "G", "I"].forEach(c => sChuyen.o(c + r) && sChuyen.ghi(c + r, null)), sChuyen.o("H" + r) && sChuyen.ghi("H" + r, 0);
+    }
+    const tongKL = lam(kl.reduce((a, x) => a + x.sc * x.kl, 0)), tongChuyen = kl.reduce((a, x) => a + x.sc, 0);
+    // cột kiểm tra theo ngày (J, K, M) và dòng tổng
+    for (let i = 0; i < sucChua; i++) {
+      const r = d0 + i, x = kl[i], dau = x && (i === 0 || kl[i - 1].ngay !== x.ngay);
+      const sc = dau ? kl.filter(y => y.ngay === x.ngay).reduce((a, y) => a + y.sc, 0) : "";
+      const k = dau ? lam(kl.filter(y => y.ngay === x.ngay).reduce((a, y) => a + y.sc * y.kl, 0)) : "";
+      if (sChuyen.f("J" + r)) sChuyen.ghi("J" + r, x ? sc : (i === kl.length ? 0 : ""));
+      if (sChuyen.f("K" + r)) sChuyen.ghi("K" + r, x ? k : (i === kl.length ? 0 : ""));
+      if (sChuyen.f("M" + r)) sChuyen.ghi("M" + r, dau ? k - (+sChuyen.v("L" + r) || 0) : 0);
+    }
+    if (sChuyen.f("H" + tC)) sChuyen.ghi("H" + tC, tongKL);
+    if (sChuyen.f("F" + tC)) sChuyen.ghi("F" + tC, tongChuyen);
+
+    // 2. danh sách xe xuất hiện
+    const xe = [...new Set(kl.map(x => x.bs))];
+    if (sLoc) for (let r = 2; r <= Math.max(400, xe.length + 2); r++) { if (xe[r - 2]) sLoc.ghi("A" + r, xe[r - 2], "A2"); else if (sLoc.o("A" + r)) sLoc.ghi("A" + r, null); }
+
+    // 3. ngày tháng trong các câu chữ
+    const tu = tuSerial(kl[0].ngay), den = tuSerial(kl[kl.length - 1].ngay), nl = opt.ngayLap;
+    const khoang = +tu === +den ? `ngày ${dmy(tu)}` : `từ ngày ${dmy(tu)} đến ngày ${dmy(den)}`;
+    const doiNgay = s => s
+      .replace(/từ ngày\s*\d{1,2}\/\d{1,2}\/\d{4}\s*đến ngày\s*\d{1,2}\/\d{1,2}\/\d{4}|(?<!từ |đến )ngày\s*\d{1,2}\/\d{1,2}\/\d{4}(?=\s*(như sau|cụ thể|:))/g, khoang)
+      .replace(/ngày(\s*)\d{1,2}(\s*)tháng(\s*)\d{1,2}(\s*)năm(\s*)\d{4}/g, (m, a, b, c, d, e) => `ngày${a}${p2(nl.getDate())}${b}tháng${c}${p2(nl.getMonth() + 1)}${d}năm${e}${nl.getFullYear()}`)
+      .replace(/(giá trị thanh toán|thanh toán)\s+ngày\s*\d{1,2}\/\d{1,2}\/\d{4}/g, (m, a) => `${a} ngày ${dmy(nl)}`);
+    const tienTong = Math.round(tongKL * donGia), chu = bangChu(tienTong);
+    const chuCu = sDN.v("B11");
+    for (const s of [sBB, sDN]) for (const [n, row] of s.rows) for (let c = row.firstChild; c; c = c.nextSibling) {
+      if (c.nodeType !== 1 || s.con(c, "f")) continue;
+      const ref = c.getAttribute("r"), v = s.v(ref);
+      if (typeof v !== "string") continue;
+      if (chuCu && khoaChu(v) === khoaChu(chuCu) && /đồng/.test(v)) { s.ghi(ref, chu); continue; }
+      const m = doiNgay(v); if (m !== v) s.ghi(ref, m);
+    }
+
+    // 4. biên bản xác nhận
+    const rBB = (() => { for (let r = 1; r < 60; r++) if (khoaChu(sBB.v("A" + r)) === "stt") return r + 2; return 18; })();   // dòng sau hàng đánh số cột
+    if (opt.donGia) sBB.ghi("F" + rBB, donGia);
+    if (sBB.f("C" + rBB)) sBB.ghi("C" + rBB, xe.join(", "));
+    sBB.ghi("E" + rBB, tongKL); sBB.ghi("G" + rBB, tienTong);
+    if (sBB.f("H" + rBB)) sBB.ghi("H" + rBB, tienTong / 1.08);
+    sBB.ghi("E" + (rBB + 1), tongKL); sBB.ghi("G" + (rBB + 1), tienTong);
+    for (let r = rBB + 1; r < rBB + 6; r++) for (const c of ["B", "C", "D"]) { const f = sBB.f(c + r); if (f && /Đề nghị/i.test(f)) sBB.ghi(c + r, chu); }
+
+    // 5. giấy đề nghị
+    for (let r = 1; r < 30; r++) for (const c of ["C", "D", "E"]) { const f = sDN.f(c + r); if (f && /!G\d+/.test(f) && /BB/i.test(f)) sDN.ghi(c + r, tienTong); }
+    sDN.ghi("B11", chu); if (sDN.f("G11")) sDN.ghi("G11", chu);
+
+    // 6. bảng kê chi tiết: các dòng lấy từ bảng kê số chuyến bằng công thức, chỉ cập nhật kết quả lưu sẵn và ẩn dòng trống
+    let tienCT = 0;
+    for (let i = 0; i < sucChuaCT; i++) {
+      const r = d0c + i, x = kl[i];
+      if (x) {
+        const tt = lam(x.sc * x.kl * donGia); tienCT += tt;
+        sCT.ghi("B" + r, x.ngay, "B" + d0c); sCT.ghi("C" + r, x.bs, "C" + d0c); sCT.ghi("E" + r, tenHang, "E" + d0c);
+        sCT.ghi("F" + r, x.sc, "F" + d0c); sCT.ghi("G" + r, x.kl, "G" + d0c); sCT.ghi("H" + r, lam(x.sc * x.kl), "H" + d0c);
+        sCT.ghi("I" + r, donGia, "I" + d0c); sCT.ghi("J" + r, tt, "J" + d0c);
+        sCT.an(r, false);
+      } else {
+        ["B", "C", "E", "F", "G", "H", "J"].forEach(c => { if (sCT.f(c + r)) sCT.ghi(c + r, c === "C" ? "" : c === "E" ? (sChuyen.v("E" + r) || "") : 0); });
+        sCT.an(r, true);
+      }
+    }
+    sCT.ghi("F" + tCT, tongChuyen); sCT.ghi("G" + tCT, lam(kl.reduce((a, x) => a + x.kl, 0))); sCT.ghi("H" + tCT, tongKL); sCT.ghi("J" + tCT, lam(tienCT));
+    sCT.ghi("B" + (tCT + 1), chu);
+    // các câu đầu bảng kê chi tiết lấy từ biên bản bằng công thức: cập nhật kết quả lưu sẵn
+    for (const [n, row] of sCT.rows) { if (n >= d0c) break; for (let c = row.firstChild; c; c = c.nextSibling) {
+      if (c.nodeType !== 1) continue; const f = sCT.con(c, "f"); if (!f) continue;
+      const m = /^\+?'([^']+)'!([A-Z]+\d+)/.exec(f.textContent); if (!m) continue;
+      const nguon = ds.find(s => s.ten === m[1]); if (nguon) sCT.ghi(c.getAttribute("r"), nguon.v(m[2]));
+    } }
+
+    // 7. ghi lại, bắt Excel tính lại toàn bộ khi mở
+    for (const s of [sChuyen, sCT, sBB, sDN, sLoc].filter(Boolean)) zip.file(s.path, s.xml());
+    let calc = wbDoc.getElementsByTagNameNS(NS, "calcPr")[0];
+    if (!calc) { calc = wbDoc.createElementNS(NS, "calcPr"); wbDoc.documentElement.appendChild(calc); }
+    calc.setAttribute("fullCalcOnLoad", "1");
+    zip.file("xl/workbook.xml", new env.XMLSerializer().serializeToString(wbDoc));
+    if (zip.file("xl/calcChain.xml")) {   // bỏ chuỗi tính cũ để Excel tự dựng lại
+      zip.remove("xl/calcChain.xml");
+      const ct = await zip.file("[Content_Types].xml").async("string");
+      zip.file("[Content_Types].xml", ct.replace(/<Override[^>]*calcChain[^>]*\/>/, ""));
+      const rl = await zip.file("xl/_rels/workbook.xml.rels").async("string");
+      zip.file("xl/_rels/workbook.xml.rels", rl.replace(/<Relationship[^>]*calcChain[^>]*\/>/, ""));
+    }
+
+    // cảnh báo để người dùng soát
+    const theoXeNgay = new Map(); kl.forEach(x => { const k = x.ngay + "|" + x.bs; theoXeNgay.set(k, (theoXeNgay.get(k) || 0) + 1); });
+    [...theoXeNgay].filter(([, n]) => n > 1).forEach(([k]) => { const [n, bs] = k.split("|"); canh.push(`Xe ${bs} xuất hiện ${theoXeNgay.get(k)} lần trong ngày ${dmy(tuSerial(+n))}. Kiểm tra có nhập trùng không.`); });
+    const klXe = new Map(); kl.forEach(x => { if (klXe.has(x.bs) && klXe.get(x.bs) !== x.kl) canh.push(`Xe ${x.bs} có 2 mức KL/chuyến khác nhau: ${klXe.get(x.bs)} và ${x.kl} m3.`); klXe.set(x.bs, x.kl); });
+    if (Math.abs(tienCT - tienTong) >= 1) canh.push(`Tổng thành tiền bảng kê chi tiết (${Math.round(tienCT).toLocaleString("vi-VN")}) lệch biên bản (${tienTong.toLocaleString("vi-VN")}) do làm tròn từng dòng.`);
+
+    const ngayTheo = [...new Set(kl.map(x => x.ngay))].map(n => ({ngay: dmy(tuSerial(n)), chuyen: kl.filter(x => x.ngay === n).reduce((a, x) => a + x.sc, 0), kl: lam(kl.filter(x => x.ngay === n).reduce((a, x) => a + x.sc * x.kl, 0)), xe: new Set(kl.filter(x => x.ngay === n).map(x => x.bs)).size}));
+    return {zip, tom: {dong: kl.length, chuyen: tongChuyen, kl: tongKL, donGia, tien: tienTong, chu, xe: xe.length, tu: dmy(tu), den: dmy(den), ngayLap: dmy(nl), ngayTheo, sucChua: Math.min(sucChua, sucChuaCT)}, canh};
+  }
+
+  function tenFileMoi(tenCu, tom) {
+    const [d1, m1, y1] = tom.tu.split("/"), [d2, m2, y2] = tom.den.split("/"), [d3, m3, y3] = tom.ngayLap.split("/");
+    const kh = tom.tu === tom.den ? `${d1}.${m1}.${y1}` : m1 === m2 && y1 === y2 ? `${d1}-${d2}.${m1}.${y1}` : `${d1}.${m1}-${d2}.${m2}.${y2}`;
+    let t = String(tenCu || "Bang ke thanh toan.xlsx").replace(/\s*\(\d+\)(?=\.xlsx$)/i, "");
+    t = t.replace(/\d{1,2}(\.\d{1,2})?-\d{1,2}\.\d{1,2}\.\d{4}(?=\s*xuất)|\d{1,2}\.\d{1,2}\.\d{4}(?=\s*xuất)/, kh)
+         .replace(/xuất\s*\d{1,2}\.\d{1,2}\.\d{4}/, `xuất ${d3}.${m3}.${y3}`);
+    if (t === tenCu) t = t.replace(/\.xlsx$/i, ` ${kh}.xlsx`);
+    return t;
+  }
+
+  root.HSTT = {lap, bangChu, docKL, tenFileMoi, ngaySerial, tuSerial};
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+<script>
+(function () {
+  const $ = s => document.querySelector(s);
+  let mau = null, kl = null, ketQua = null;
+  const homNay = new Date(); $("#ngayLap").value = `${homNay.getFullYear()}-${String(homNay.getMonth() + 1).padStart(2, "0")}-${String(homNay.getDate()).padStart(2, "0")}`;
+  const so = n => Number(n).toLocaleString("vi-VN", {maximumFractionDigits: 2});
+  const docBuf = f => new Promise((ok, loi) => { const r = new FileReader(); r.onload = e => ok(e.target.result); r.onerror = loi; r.readAsArrayBuffer(f); });
+
+  function gan(drop, input, cb) {
+    input.addEventListener("change", e => { if (e.target.files[0]) cb(e.target.files[0]); e.target.value = ""; });
+    ["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+    ["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+    drop.addEventListener("drop", e => e.dataTransfer.files[0] && cb(e.dataTransfer.files[0]));
+  }
+  gan($("#dMau"), $("#fMau"), async f => {
+    mau = {ten: f.name, buf: await docBuf(f)}; $("#tMau").textContent = "📄 " + f.name; $("#dMau").classList.add("ok");
+    try {   // gợi ý đơn giá đang dùng trong hồ sơ cũ
+      const wb = XLSX.read(mau.buf, {type: "array"}); const sn = wb.SheetNames.find(n => /^bb xác nhận/i.test(n.trim()));
+      const v = sn && wb.Sheets[sn]["F18"] && wb.Sheets[sn]["F18"].v;
+      if (typeof v === "number") $("#donGia").placeholder = so(v) + " (theo hồ sơ cũ)";
+    } catch (e) {}
+    chay();
+  });
+  gan($("#dKL"), $("#fKL"), async f => {
+    const wb = XLSX.read(await docBuf(f), {type: "array"});   // giữ ngày dạng số Excel, tránh lệch múi giờ
+    kl = {ten: f.name, rows: XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, raw: true, defval: ""})};
+    $("#tKL").textContent = "📄 " + f.name; $("#dKL").classList.add("ok"); chay();
+  });
+  ["#ngayLap", "#donGia"].forEach(id => $(id).addEventListener("change", chay));
+
+  async function chay() {
+    $("#loi").hidden = true;
+    if (!mau || !kl) return;
+    try {
+      const [y, m, d] = $("#ngayLap").value.split("-").map(Number);
+      const dg = +String($("#donGia").value).replace(/[^\d]/g, "") || 0;
+      const zip = await JSZip.loadAsync(mau.buf.slice(0));
+      const r = await HSTT.lap(zip, kl.rows, {ngayLap: new Date(y, m - 1, d), donGia: dg || undefined}, {DOMParser, XMLSerializer});
+      ketQua = r; const t = r.tom;
+      $("#kqTieuDe").textContent = t.tu === t.den ? `Hồ sơ ngày ${t.tu}` : `Hồ sơ từ ${t.tu} đến ${t.den}`;
+      $("#tong").innerHTML = `<div><b>${so(t.chuyen)}</b>chuyến</div><div><b>${so(t.kl)}</b>m3</div><div><b>${t.xe}</b>xe</div><div><b>${so(t.tien)}</b>đồng (đơn giá ${so(t.donGia)})</div>`;
+      $("#chu").innerHTML = `<span>Bằng chữ</span>${t.chu}`;
+      $("#theoNgay").innerHTML = `<tr><th>Ngày</th><th>Số xe</th><th>Số chuyến</th><th>Khối lượng (m3)</th><th>Thành tiền</th></tr>` +
+        t.ngayTheo.map(n => `<tr><td>${n.ngay}</td><td class="n">${n.xe}</td><td class="n">${so(n.chuyen)}</td><td class="n">${so(n.kl)}</td><td class="n">${so(Math.round(n.kl * t.donGia))}</td></tr>`).join("");
+      $("#canh").hidden = !r.canh.length;
+      $("#canh").innerHTML = `<b>Cần xem lại</b><ul>${r.canh.map(c => `<li>${c.replace(/</g, "&lt;")}</li>`).join("")}</ul>`;
+      $("#kq").hidden = false;
+    } catch (e) { $("#kq").hidden = true; $("#loi").textContent = e.message; $("#loi").hidden = false; }
+  }
+  $("#tai").addEventListener("click", async () => {
+    if (!ketQua) return;
+    const blob = await ketQua.zip.generateAsync({type: "blob", compression: "DEFLATE", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = HSTT.tenFileMoi(mau.ten, ketQua.tom);
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  });
+  window._h = {get kq() { return ketQua; }};
+})();
+</script>
+</body>
+</html>
