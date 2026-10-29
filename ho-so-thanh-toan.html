@@ -623,7 +623,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
   const loi = m => { $("#kq").hidden = true; $("#loi").textContent = m; $("#loi").hidden = false; };
   const ngayChu = n => { const d = HSTT.tuSerial(n); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`; };
   const opt = (el, ds, chon) => { el.innerHTML = ds.map(([v, t]) => `<option value="${String(v).replace(/"/g, "&quot;")}">${t}</option>`).join(""); if (chon !== undefined && ds.some(d => String(d[0]) === String(chon))) el.value = chon; };
-  // bộ lọc mã KH -> cung đường -> ngày (mặc định: ngày gần nhất có số liệu)
+  // bộ lọc mã KH -> cung đường -> ngày (mặc định: cả kỳ nếu file ít ngày, không thì ngày gần nhất có số liệu)
   function dungLoc(cap) {
     const ds = td.ds;
     if (!cap) { const moiNhat = Math.max(...ds.map(x => x.ngay));
@@ -638,7 +638,9 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
       opt($("#lCD"), cds, (cdMau || cds[0])[0]);
     }
     const cd = $("#lCD").value, ngay = [...new Set(dsKH.filter(x => x.cd === cd).map(x => x.ngay))].sort((a, b) => a - b);
-    if (cap !== "ngay") { const cuoi = ngay[ngay.length - 1]; opt($("#lTu"), ngay.map(n => [n, ngayChu(n)]), cuoi); opt($("#lDen"), ngay.map(n => [n, ngayChu(n)]), cuoi); }
+    if (cap !== "ngay") {   // file đã lọc sẵn một kỳ (ít ngày): lấy cả kỳ; file theo dõi cả tháng: lấy ngày mới nhất
+      const cuoi = ngay[ngay.length - 1], dau = ngay.length <= 7 ? ngay[0] : cuoi;
+      opt($("#lTu"), ngay.map(n => [n, ngayChu(n)]), dau); opt($("#lDen"), ngay.map(n => [n, ngayChu(n)]), cuoi); }
     if (+$("#lDen").value < +$("#lTu").value) $("#lDen").value = $("#lTu").value;
     const l = HSTT.locTheoDoi(td, {kh, cd, tu: +$("#lTu").value, den: +$("#lDen").value});
     kl = {ten: "", rows: l.rows}; canhLoc = l.canh; tienSo = l.tien;
