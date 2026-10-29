@@ -438,6 +438,11 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     // 4. biên bản xác nhận
     const rBB = (() => { for (let r = 1; r < 60; r++) if (khoaChu(sBB.v("A" + r)) === "stt") return r + 2; return 18; })();   // dòng sau hàng đánh số cột
     if (opt.donGia) sBB.ghi("F" + rBB, donGia);
+    if (/Lọc xe/i.test(sBB.f("C" + rBB) || "")) {   // lấy biển số thẳng từ bảng kê số chuyến, bỏ xe trùng: khỏi phải lọc tay sang sheet Lọc
+      const vung = `'${sChuyen.ten}'!$C$${d0}:$C$${tC - 1}`, f = sBB.con(sBB.o("C" + rBB), "f");
+      f.textContent = `_xlfn.TEXTJOIN(", ",TRUE,IFERROR(IF(MATCH(${vung},${vung},0)=ROW(${vung})-${d0 - 1},${vung},""),""))`;
+      f.setAttribute("t", "array"); f.setAttribute("ref", "C" + rBB);   // công thức mảng: chạy được cả Excel 2019 lẫn 365
+    }
     if (sBB.f("C" + rBB)) sBB.ghi("C" + rBB, xe.join(", "));
     sBB.ghi("E" + rBB, tongKL); sBB.ghi("G" + rBB, tienTong);
     if (sBB.f("H" + rBB)) sBB.ghi("H" + rBB, tienTong / 1.08);
