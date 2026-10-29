@@ -232,19 +232,28 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
   }
 
   // ---------- đọc file khối lượng: Ngày | Biển số | Số chuyến | KL/1 chuyến ----------
+  // biển số viết liền "14H02331" -> "14H-02331" cho khớp cách ghi trong hồ sơ
+  const chuanBS = v => { const t = String(v || "").trim().toUpperCase().replace(/\s+/g, ""); const m = /^(\d{2}[A-Z]{1,2})(\d{4,5})$/.exec(t); return m ? m[1] + "-" + m[2] : t; };
   function docKL(rows) {
-    const hd = rows[0].map(khoaChu);
-    const tim = (...ks) => hd.findIndex(h => ks.some(k => h.includes(k)));
-    const cN = tim("ngày"), cB = tim("biển"), cS = tim("số chuyến", "chuyến"), cK = tim("kl", "khối lượng");
-    if ([cN, cB, cS, cK].some(i => i < 0)) throw new Error("File khối lượng cần đủ 4 cột: Ngày, Biển số xe, Số chuyến, KL/1 chuyến. Đang thấy: " + rows[0].join(" | "));
+    // dòng tiêu đề có thể nằm dưới vài dòng tên bảng: tìm dòng đầu tiên có cột ngày và cột biển số
+    const laBien = h => /biển|bsx|bks|số xe/.test(h), laNgay = h => h.startsWith("ngày");
+    let d = rows.slice(0, 10).findIndex(r => r && r.map(khoaChu).some(laNgay) && r.map(khoaChu).some(laBien));
+    if (d < 0) d = 0;
+    const hd = (rows[d] || []).map(khoaChu);
+    const tim = f => hd.findIndex(h => f(h));
+    const cN = tim(laNgay), cB = tim(laBien), cS = tim(h => h.includes("chuyến") || h.startsWith("số lượng"));
+    let cK = tim(h => (h.includes("kl") || h.includes("khối lượng")) && !h.includes("tổng"));   // khối lượng 1 chuyến
+    const cT = tim(h => (h.includes("kl") || h.includes("khối lượng")) && h.includes("tổng"));  // không có thì chia từ tổng khối lượng
+    if ([cN, cB, cS].some(i => i < 0) || (cK < 0 && cT < 0)) throw new Error("File khối lượng cần đủ 4 cột: Ngày, Biển số xe, Số chuyến, KL/1 chuyến. Đang thấy: " + (rows[d] || []).join(" | "));
     const ds = [], loi = [];
-    rows.slice(1).forEach((r, i) => {
+    rows.slice(d + 1).forEach((r, i) => {
       if (!r || r.every(v => v === null || v === undefined || v === "")) return;
+      if (r.some(v => typeof v === "string" && /^\s*(tổng|cộng)/i.test(v))) return;   // dòng tổng cuối bảng
       let n = r[cN];
       if (n instanceof Date) n = Math.round((n.getTime() - n.getTimezoneOffset() * 6e4) / 864e5 + 25569);   // ngày đọc từ Excel có thể lệch vài giây do múi giờ
       else if (typeof n === "string") { const m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(n.trim()); n = m ? ngaySerial(new Date(+m[3], +m[2] - 1, +m[1])) : NaN; }
-      const bs = String(r[cB] || "").trim().toUpperCase(), sc = +r[cS], kl = +r[cK];
-      if (!bs || !isFinite(n) || !isFinite(sc) || !isFinite(kl)) { loi.push(`Dòng ${i + 2}: thiếu hoặc sai dữ liệu (${r.join(" | ")})`); return; }
+      const bs = chuanBS(r[cB]), sc = +r[cS], kl = lam(cK >= 0 ? +r[cK] : +r[cT] / sc);
+      if (!bs || !isFinite(n) || !isFinite(sc) || !isFinite(kl)) { loi.push(`Dòng ${d + i + 2}: thiếu hoặc sai dữ liệu (${r.join(" | ")})`); return; }
       ds.push({ngay: n, bs, sc, kl});
     });
     return {ds, loi};
@@ -284,7 +293,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     const ds = [], loi = [];
     s.rows.slice(1).forEach((r, i) => {
       if (!r || r.every(v => v === null || v === undefined || v === "")) return;
-      const x = {ngay: docNgay(r[cN]), bs: String(r[cB] || "").trim().toUpperCase(), kh: String(r[cK] || "").trim(), cd: String(r[cC] || "").trim().replace(/\s+/g, " "), sc: soVN(r[cS]), kl: soVN(r[cL]), gia: cG >= 0 ? soVN(r[cG]) : NaN, dong: i + 2};
+      const x = {ngay: docNgay(r[cN]), bs: chuanBS(r[cB]), kh: String(r[cK] || "").trim(), cd: String(r[cC] || "").trim().replace(/\s+/g, " "), sc: soVN(r[cS]), kl: soVN(r[cL]), gia: cG >= 0 ? soVN(r[cG]) : NaN, dong: i + 2};
       if (!x.bs && !x.kh) return;
       if (!isFinite(x.ngay) || !x.bs || !x.kh || !x.cd || !isFinite(x.sc) || !isFinite(x.kl)) { loi.push(x); return; }
       ds.push(x);
