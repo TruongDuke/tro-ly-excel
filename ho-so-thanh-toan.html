@@ -95,7 +95,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     </ol>
   </section>
 
-  <footer>Công cụ chạy ngay trong trình duyệt, không gửi file đi đâu. · Phiên bản 27/10/2026 (mẫu ECO + TLS)</footer>
+  <footer>Công cụ chạy ngay trong trình duyệt, không gửi file đi đâu. · Phiên bản 29/10/2026 (mẫu ECO + TLS)</footer>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -195,6 +195,18 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
       el.setAttribute("t", "inlineStr");
       const is = this.doc.createElementNS(NS, "is"), t = this.doc.createElementNS(NS, "t");
       t.setAttribute("xml:space", "preserve"); t.textContent = val; is.appendChild(t); el.appendChild(is);
+    }
+    gop(boNeu, them) {   // bỏ các vùng gộp ô thỏa boNeu(ref), thêm các vùng mới (mảng "B18:B49")
+      let mc = this.doc.getElementsByTagNameNS(NS, "mergeCells")[0];
+      if (mc) Array.prototype.slice.call(mc.getElementsByTagNameNS(NS, "mergeCell")).forEach(m => { if (boNeu(m.getAttribute("ref"))) mc.removeChild(m); });
+      if (them.length && !mc) {   // mergeCells phải nằm ngay sau sheetData (sau sheetCalcPr, sheetProtection... nếu có)
+        mc = this.doc.createElementNS(NS, "mergeCells");
+        let sau = this.sd.nextSibling;
+        while (sau && (sau.nodeType !== 1 || ["sheetCalcPr", "sheetProtection", "protectedRanges", "scenarios", "autoFilter", "sortState", "dataConsolidate", "customSheetViews"].includes(sau.localName))) sau = sau.nextSibling;
+        this.sd.parentNode.insertBefore(mc, sau);
+      }
+      them.forEach(ref => { const m = this.doc.createElementNS(NS, "mergeCell"); m.setAttribute("ref", ref); mc.appendChild(m); });
+      if (mc) { const n = mc.getElementsByTagNameNS(NS, "mergeCell").length; if (n) mc.setAttribute("count", n); else mc.parentNode.removeChild(mc); }
     }
     an(n, an) { const r = this.row(n, an); if (!r) return; if (an) r.setAttribute("hidden", "1"); else r.removeAttribute("hidden"); }
     xml() { return new this.env.XMLSerializer().serializeToString(this.doc); }
@@ -383,7 +395,12 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
         sChuyen.ghi("F" + r, x.sc, "F" + d0); sChuyen.ghi("G" + r, x.kl, "G" + d0);
         sChuyen.ghi("H" + r, lam(x.sc * x.kl), "H" + d0); sChuyen.ghi("I" + r, x.ngay, "I" + d0);
       } else ["B", "C", "F", "G", "I"].forEach(c => sChuyen.o(c + r) && sChuyen.ghi(c + r, null)), sChuyen.o("H" + r) && sChuyen.ghi("H" + r, 0);
+      sChuyen.an(r, !x);   // mẫu kỳ trước ẩn sẵn các dòng thừa: hiện đủ dòng có xe, ẩn dòng trống
     }
+    // gộp ô cột Ngày tháng theo từng ngày như file làm tay (bỏ vùng gộp của kỳ trước trong vùng dữ liệu)
+    const nhomNgay = []; kl.forEach((x, i) => { if (i === 0 || kl[i - 1].ngay !== x.ngay) nhomNgay.push([i, i]); else nhomNgay[nhomNgay.length - 1][1] = i; });
+    sChuyen.gop(ref => { const [a, b] = ref.split(":").map(tachO); return a.c === 2 && b.c === 2 && b.r >= d0 && a.r < tC; },
+      nhomNgay.filter(([a, b]) => b > a).map(([a, b]) => `B${d0 + a}:B${d0 + b}`));
     const tongKL = lam(kl.reduce((a, x) => a + x.sc * x.kl, 0)), tongChuyen = kl.reduce((a, x) => a + x.sc, 0);
     // cột kiểm tra theo ngày (J, K, M) và dòng tổng
     for (let i = 0; i < sucChua; i++) {
