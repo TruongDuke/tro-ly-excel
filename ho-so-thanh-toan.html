@@ -511,7 +511,6 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     if (!kl.length) throw new Error("Không có dòng số liệu nào cho lựa chọn này.");
     kl.sort((a, b) => a.ngay - b.ngay);
     const canh = [...loi], nhan = opt.cachKL !== "cu";
-    if (!nhan) canh.push("Đang tính theo cách của file cũ: cột Khối lượng chỉ ghi m3/chuyến, KHÔNG nhân số chuyến. Tổng tiền sẽ thấp hơn doanh thu trong sổ.");
 
     const dongSTT = (s, tu = 1) => { for (let r = tu; r < 60; r++) if (khoaChu(s.v("A" + r)) === "stt") return r; throw new Error("Không thấy dòng tiêu đề STT ở sheet " + s.ten); };
     const dongTong = (s, tu) => { for (let r = tu; r < tu + 3000; r++) if (/^tổng cộng/.test(khoaChu(s.v("A" + r)))) return r; throw new Error("Không thấy dòng Tổng cộng ở sheet " + s.ten); };
@@ -530,18 +529,26 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
 
     // 1. Khối lượng: mỗi dòng một xe một ngày
     const tenVT = sKL.v("C" + d0) || "Đất san lấp", dvt = sKL.v("D" + d0) || "M3", viTri = sKL.v("I" + d0) || "";
-    const klDong = x => nhan ? lam(x.sc * x.kl) : x.kl;
+    // mẫu mới có cột "Tổng KL" = Số chuyến × Khối lượng (Đối chiếu GT cộng theo cột đó): cột Khối lượng chỉ ghi m3/chuyến
+    let cTong = null;
+    for (let c = 8; c <= 16 && !cTong; c++) { const col = colChu(c), f = (sKL.f(col + d0) || "").replace(/\s|\+|\$/g, "");
+      if (/^tổng (kl|khối)/.test(khoaChu(sKL.v(col + (d0 - 1)))) && new RegExp(`^(F${d0}\\*G${d0}|G${d0}\\*F${d0})$`).test(f)) cTong = col; }
+    const coF = ref => { const el = sKL.o(ref); return !!(el && sKL.con(el, "f")); };   // kể cả công thức chép xuống (shared), nội dung rỗng
+    const nhanKL = nhan || !!cTong, klDong = x => nhanKL ? lam(x.sc * x.kl) : x.kl, klCotG = x => cTong ? x.kl : klDong(x);
+    if (!nhanKL) canh.push("Đang tính theo cách của file cũ: cột Khối lượng chỉ ghi m3/chuyến, KHÔNG nhân số chuyến. Tổng tiền sẽ thấp hơn doanh thu trong sổ.");
     for (let i = 0; i < sucChua; i++) {
       const r = d0 + i, x = kl[i];
       if (x) {
         sKL.ghi("B" + r, x.ngay, "B" + d0); sKL.ghi("C" + r, tenVT, "C" + d0); sKL.ghi("D" + r, dvt, "D" + d0); sKL.ghi("E" + r, x.bs, "E" + d0);
-        sKL.ghi("F" + r, x.sc, "F" + d0); sKL.ghi("G" + r, klDong(x), "G" + d0); if (sKL.o("H" + r)) sKL.ghi("H" + r, null); sKL.ghi("I" + r, viTri, "I" + d0);
+        sKL.ghi("F" + r, x.sc, "F" + d0); sKL.ghi("G" + r, klCotG(x), "G" + d0); if (sKL.o("H" + r)) sKL.ghi("H" + r, null); sKL.ghi("I" + r, viTri, "I" + d0);
+        if (cTong && coF(cTong + r)) sKL.ghi(cTong + r, klDong(x));
         sKL.an(r, false);
-      } else { ["B", "C", "D", "E", "F", "G", "H", "I"].forEach(c => sKL.o(c + r) && sKL.ghi(c + r, null)); sKL.an(r, true); }
+      } else { ["B", "C", "D", "E", "F", "G", "H", "I"].forEach(c => sKL.o(c + r) && sKL.ghi(c + r, null)); if (cTong && coF(cTong + r)) sKL.ghi(cTong + r, 0); sKL.an(r, true); }
     }
     const tongChuyen = kl.reduce((a, x) => a + x.sc, 0), tongKL = lam(kl.reduce((a, x) => a + klDong(x), 0));
     const tu = tuSerial(kl[0].ngay), den = tuSerial(kl[kl.length - 1].ngay);
-    sKL.ghi("F" + tK, tongChuyen); sKL.ghi("G" + tK, tongKL);
+    sKL.ghi("F" + tK, tongChuyen); sKL.ghi("G" + tK, lam(kl.reduce((a, x) => a + klCotG(x), 0)));
+    if (cTong && coF(cTong + tK)) sKL.ghi(cTong + tK, tongKL);
     const tieuDeNgay = `Từ ngày ${dmy(tu)} đến ngày ${dmy(den)}`;
     for (let r = 1; r < d0; r++) { const f = sKL.f("A" + r); if (f && /MIN\(/i.test(f)) sKL.ghi("A" + r, tieuDeNgay); }
 
@@ -607,7 +614,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     const klXe = new Map(); kl.forEach(x => { if (klXe.has(x.bs) && klXe.get(x.bs) !== x.kl) canh.push(`Xe ${x.bs} có 2 mức KL/chuyến khác nhau: ${klXe.get(x.bs)} và ${x.kl} m3.`); klXe.set(x.bs, x.kl); });
     const ngayTheo = [...new Set(kl.map(x => x.ngay))].map(n => { const c = kl.filter(x => x.ngay === n); return {ngay: dmy(tuSerial(n)), chuyen: c.reduce((a, x) => a + x.sc, 0), kl: lam(c.reduce((a, x) => a + klDong(x), 0)), xe: new Set(c.map(x => x.bs)).size}; });
     return {zip, canh, tom: {mau: "TLS", dong: kl.length, chuyen: tongChuyen, kl: tongKL, donGia, tien: Math.round(tongSau), chu: bangChu(tongSau, "phay"),
-      deNghi: Math.round(deNghi), tyLe, chuDeNghi: bangChu(deNghi, "phay"), xe: xe.length, tu: dmy(tu), den: dmy(den), ngayLap: dmy(den), ngayTheo, sucChua, nhan}};
+      deNghi: Math.round(deNghi), tyLe, chuDeNghi: bangChu(deNghi, "phay"), xe: xe.length, tu: dmy(tu), den: dmy(den), ngayLap: dmy(den), ngayTheo, sucChua, nhan: nhanKL}};
   }
 
   function tenFileMoi(tenCu, tom) {
