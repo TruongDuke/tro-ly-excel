@@ -95,7 +95,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     </ol>
   </section>
 
-  <footer>Công cụ chạy ngay trong trình duyệt, không gửi file đi đâu. · Phiên bản 29/10/2026 (mẫu ECO + TLS)</footer>
+  <footer>Công cụ chạy ngay trong trình duyệt, không gửi file đi đâu. · Phiên bản 30/10/2026 (mẫu ECO + TLS)</footer>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -527,33 +527,43 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     if (opt.donGia && mG && opt.donGia !== giaMau) for (let r = g0; r < tG; r++) { const el = sGT.o("F" + r), f = el && sGT.con(el, "f"); if (f && f.textContent.trim()) f.textContent = `${donGia}/${heSo}`; }
     const giaTruocThue = donGia / heSo;
 
-    // 1. Khối lượng: mỗi dòng một xe một ngày
-    const tenVT = sKL.v("C" + d0) || "Đất san lấp", dvt = sKL.v("D" + d0) || "M3", viTri = sKL.v("I" + d0) || "";
-    // mẫu mới có cột "Tổng KL" = Số chuyến × Khối lượng (Đối chiếu GT cộng theo cột đó): cột Khối lượng chỉ ghi m3/chuyến
-    let cTong = null;
-    for (let c = 8; c <= 16 && !cTong; c++) { const col = colChu(c), f = (sKL.f(col + d0) || "").replace(/\s|\+|\$/g, "");
-      if (/^tổng (kl|khối)/.test(khoaChu(sKL.v(col + (d0 - 1)))) && new RegExp(`^(F${d0}\\*G${d0}|G${d0}\\*F${d0})$`).test(f)) cTong = col; }
+    // 1. Khối lượng: mỗi dòng một xe một ngày. Tìm cột theo tiêu đề (mẫu có thể đổi chỗ cột), không thấy thì theo vị trí mẫu cũ
+    const tieuDe = {}; for (let c = 1; c <= 16; c++) { const h = khoaChu(sKL.v(colChu(c) + (d0 - 1))); if (h) tieuDe[colChu(c)] = h; }
+    const cot = (f, macDinh) => Object.keys(tieuDe).find(c => f(tieuDe[c])) || macDinh;
+    const cN = cot(h => h.startsWith("ngày"), "B"), cVT = cot(h => h.includes("vật tư") || h.includes("tên hàng"), "C"), cDV = cot(h => h === "đvt" || h.startsWith("đơn vị"), "D");
+    const cBS = cot(h => h.includes("biển"), "E"), cSC = cot(h => h.includes("chuyến"), "F"), cKL = cot(h => (h.startsWith("khối lượng") || h.startsWith("kl")) && !h.includes("tổng"), "G");
+    const cGio = cot(h => h.startsWith("giờ"), "H"), cVTri = cot(h => h.startsWith("vị trí"), "I");
     const coF = ref => { const el = sKL.o(ref); return !!(el && sKL.con(el, "f")); };   // kể cả công thức chép xuống (shared), nội dung rỗng
+    // cột "Tổng KL" = Số chuyến × Khối lượng (Đối chiếu GT cộng theo cột đó): khi có, cột Khối lượng chỉ ghi m3/chuyến
+    const ct = Object.keys(tieuDe).find(c => /^tổng (kl|khối)/.test(tieuDe[c]));
+    const fT = ct ? (sKL.f(ct + d0) || "").replace(/\s|\+|\$/g, "") : "";
+    const cTong = ct && [`${cSC}${d0}*${cKL}${d0}`, `${cKL}${d0}*${cSC}${d0}`].includes(fT) ? ct : null;
+    const tenVT = sKL.v(cVT + d0) || "Đất san lấp", dvt = sKL.v(cDV + d0) || "M3", viTri = sKL.v(cVTri + d0) || "";
     const nhanKL = nhan || !!cTong, klDong = x => nhanKL ? lam(x.sc * x.kl) : x.kl, klCotG = x => cTong ? x.kl : klDong(x);
     if (!nhanKL) canh.push("Đang tính theo cách của file cũ: cột Khối lượng chỉ ghi m3/chuyến, KHÔNG nhân số chuyến. Tổng tiền sẽ thấp hơn doanh thu trong sổ.");
+    // định dạng ô ngày lấy từ một ô ngày dạng số trong mẫu (mẫu có thể lẫn ô ngày gõ dạng chữ)
+    let sNgay = null; for (let r = d0; r < tK && !sNgay; r++) { const el = sKL.o(cN + r); if (el && typeof sKL.v(cN + r) === "number" && el.getAttribute("s")) sNgay = el.getAttribute("s"); }
     for (let i = 0; i < sucChua; i++) {
       const r = d0 + i, x = kl[i];
       if (x) {
-        sKL.ghi("B" + r, x.ngay, "B" + d0); sKL.ghi("C" + r, tenVT, "C" + d0); sKL.ghi("D" + r, dvt, "D" + d0); sKL.ghi("E" + r, x.bs, "E" + d0);
-        sKL.ghi("F" + r, x.sc, "F" + d0); sKL.ghi("G" + r, klCotG(x), "G" + d0); if (sKL.o("H" + r)) sKL.ghi("H" + r, null); sKL.ghi("I" + r, viTri, "I" + d0);
+        sKL.ghi(cN + r, x.ngay, cN + d0); if (sNgay) sKL.o(cN + r).setAttribute("s", sNgay);
+        sKL.ghi(cVT + r, tenVT, cVT + d0); sKL.ghi(cDV + r, dvt, cDV + d0); sKL.ghi(cBS + r, x.bs, cBS + d0);
+        sKL.ghi(cSC + r, x.sc, cSC + d0); sKL.ghi(cKL + r, klCotG(x), cKL + d0); if (sKL.o(cGio + r)) sKL.ghi(cGio + r, null); sKL.ghi(cVTri + r, viTri, cVTri + d0);
         if (cTong && coF(cTong + r)) sKL.ghi(cTong + r, klDong(x));
         sKL.an(r, false);
-      } else { ["B", "C", "D", "E", "F", "G", "H", "I"].forEach(c => sKL.o(c + r) && sKL.ghi(c + r, null)); if (cTong && coF(cTong + r)) sKL.ghi(cTong + r, 0); sKL.an(r, true); }
+      } else { [cN, cVT, cDV, cBS, cSC, cKL, cGio, cVTri].forEach(c => sKL.o(c + r) && sKL.ghi(c + r, null)); if (cTong && coF(cTong + r)) sKL.ghi(cTong + r, 0); sKL.an(r, true); }
     }
     const tongChuyen = kl.reduce((a, x) => a + x.sc, 0), tongKL = lam(kl.reduce((a, x) => a + klDong(x), 0));
     const tu = tuSerial(kl[0].ngay), den = tuSerial(kl[kl.length - 1].ngay);
-    sKL.ghi("F" + tK, tongChuyen); sKL.ghi("G" + tK, lam(kl.reduce((a, x) => a + klCotG(x), 0)));
+    sKL.ghi(cSC + tK, tongChuyen); sKL.ghi(cKL + tK, lam(kl.reduce((a, x) => a + klCotG(x), 0)));
     if (cTong && coF(cTong + tK)) sKL.ghi(cTong + tK, tongKL);
     const tieuDeNgay = `Từ ngày ${dmy(tu)} đến ngày ${dmy(den)}`;
     for (let r = 1; r < d0; r++) { const f = sKL.f("A" + r); if (f && /MIN\(/i.test(f)) sKL.ghi("A" + r, tieuDeNgay); }
 
     // 2. Đối chiếu giá trị: mỗi xe một dòng
-    let tongTruoc = 0, tongSau = 0;
+    let tongTruoc = 0, tongSau = 0, tongI = 0;
+    // cột I: mẫu cũ là "Thành tiền trước thuế" (= E×F), mẫu mới là "Tiền thuế GTGT" (= G×H, H là thuế suất)
+    const thueI = /H\d+/.test(sGT.f("I" + g0) || "") || /thuế gtgt/.test(khoaChu(sGT.v("I" + (g0 - 1))));
     for (let i = 0; i < sucChuaXe; i++) {
       const r = g0 + i, bs = xe[i], rKL = d0 + i;
       const ten = kl[i] ? tenVT : "", vt = kl[i] ? viTri : "";
@@ -562,7 +572,8 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
         const cua = kl.filter(x => x.bs === bs), sc = cua.reduce((a, x) => a + x.sc, 0), e = lam(cua.reduce((a, x) => a + klDong(x), 0));
         const g = giaTruocThue * e, j = g * heSo; tongTruoc += g; tongSau += j;
         sGT.ghi("C" + r, bs, "C" + g0); sGT.ghi("D" + r, sc); sGT.ghi("E" + r, e); sGT.ghi("F" + r, giaTruocThue);
-        sGT.ghi("G" + r, g); sGT.ghi("I" + r, g); sGT.ghi("J" + r, j);
+        const vI = thueI ? g * (+sGT.v("H" + r) || 0.08) : g; tongI += vI;
+        sGT.ghi("G" + r, g); sGT.ghi("I" + r, vI); sGT.ghi("J" + r, j);
         sGT.an(r, false);
       } else {
         if (sGT.o("C" + r)) sGT.ghi("C" + r, null);
@@ -570,7 +581,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
         sGT.an(r, true);
       }
     }
-    sGT.ghi("D" + tG, tongChuyen); sGT.ghi("E" + tG, tongKL); sGT.ghi("G" + tG, tongTruoc); sGT.ghi("I" + tG, tongTruoc); sGT.ghi("J" + tG, tongSau);
+    sGT.ghi("D" + tG, tongChuyen); sGT.ghi("E" + tG, tongKL); sGT.ghi("G" + tG, tongTruoc); sGT.ghi("I" + tG, thueI ? tongI : tongTruoc); sGT.ghi("J" + tG, tongSau);
     for (let r = 1; r < g0; r++) { if (sGT.f("A" + r) && /khối lượng/i.test(sGT.f("A" + r))) sGT.ghi("A" + r, tieuDeNgay); if (sGT.f("D" + r) && /MAX\(/i.test(sGT.f("D" + r))) sGT.ghi("D" + r, kl[kl.length - 1].ngay); }
 
     // 3. Đối chiếu công nợ
