@@ -126,6 +126,12 @@
         else if (i >= ds.length - 3 && KET_AI.test(s) && s.length < 400) { k.bo = "Câu hỏi lại của AI"; dem.cauAi++; }
       });
       // đường kẻ ngang ngay trước câu kết bị bỏ
+      // khối ghi chú AI viết cho người dùng sau đường kẻ cuối ("Cần bạn bổ sung...", "Gợi ý thêm...")
+      const ke = ds.map((k, i) => k.t === "hr" && !k.bo ? i : -1).filter(i => i >= 0).pop();
+      if (ke !== undefined) {
+        const truoc = ds.slice(0, ke).filter(x => !x.bo && x.t !== "hr").length, sau = ds.slice(ke + 1).filter(x => !x.bo);
+        if (truoc >= 3 && sau.length && sau.length <= truoc) { sau.forEach(x => { x.bo = "Ghi chú của AI sau đường kẻ cuối"; }); dem.cauAi += sau.length; }
+      }
       ds.forEach((k, i) => { if (k.t === "hr" && (i === ds.length - 1 || ds.slice(i + 1).every(x => x.bo) || ds.slice(0, i).every(x => x.bo))) k.bo = "Đường kẻ thừa"; });
     }
     const con = ds.filter(k => !k.bo && k.t !== "hr");
@@ -251,8 +257,20 @@
         const n = Math.max(...k.rows.map(r => r.length));
         // cột rộng theo độ dài chữ (giới hạn để cột ngắn không quá hẹp)
         const dai = Array.from({length: n}, (_, j) => Math.min(40, Math.max(6, ...k.rows.map(r => chu(r[j] || []).length))));
-        const tong = dai.reduce((a, b) => a + b, 0), RONG = 9355;
-        const cw = dai.map(d => Math.round(RONG * d / tong));
+        const RONG = 9355;
+        // cột không được hẹp hơn chữ hoặc số dài nhất trong cột, kẻo "2.500" bị ngắt thành "2.50 / 0"
+        const toiThieu = Array.from({length: n}, (_, j) => 280 + 150 * Math.min(16, Math.max(...k.rows.map(r => Math.max(0, ...chu(r[j] || []).split(/\s+/).map(w => w.length))))));
+        const ghim = new Set();
+        let cw = [];
+        for (let lap = 0; lap <= n; lap++) {
+          const conLai = RONG - [...ghim].reduce((a, j) => a + toiThieu[j], 0);
+          const tong = dai.reduce((a, d, j) => ghim.has(j) ? a : a + d, 0);
+          cw = dai.map((d, j) => ghim.has(j) ? toiThieu[j] : conLai * d / tong);
+          const hep = cw.map((w, j) => !ghim.has(j) && w < toiThieu[j] ? j : -1).filter(j => j >= 0);
+          if (!hep.length) break;
+          hep.forEach(j => ghim.add(j));
+        }
+        cw = cw.map(Math.round);
         children.push(new D.Table({
           width: {size: RONG, type: D.WidthType.DXA}, columnWidths: cw, layout: D.TableLayoutType.FIXED,
           borders: {top: vien, bottom: vien, left: vien, right: vien, insideHorizontal: vien, insideVertical: vien},
