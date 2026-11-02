@@ -155,7 +155,7 @@
   $("#dSheetB").addEventListener("change", e => napSheet("B", +e.target.value));
   $("#dKhoaA").addEventListener("change", () => { veCot(); chay(); });
   $("#dKhoaB").addEventListener("change", () => { veCot(); chay(); });
-  $("#dMau").addEventListener("click", async () => { const m = mau(); S.A = S.B = null; await napFile("A", m.A); await napFile("B", m.B); });
+  $("#dMau").addEventListener("click", async () => { const m = mau(); S.A = S.B = null; window.TL.xemGoc("doichieu", [m.A, m.B]); await napFile("A", m.A); await napFile("B", m.B); });
   $("#dTai").addEventListener("click", tai);
   window._dc = {get kq() { return kq; }, tai};
 })();

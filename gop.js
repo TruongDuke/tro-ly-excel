@@ -66,7 +66,7 @@
   }
 
   ganDrop($("#gDrop"), $("#gFile"), them);
-  $("#gMau").addEventListener("click", () => { files = []; them(mau()); });
+  $("#gMau").addEventListener("click", () => { files = []; const m = mau(); them(m); window.TL.xemGoc("gop", m); });
   ["#gMoiSheet", "#gBoTrong", "#gNguon"].forEach(id => $(id).addEventListener("change", gop));
   $("#gTai").addEventListener("click", tai);
   window._gop = {get kq() { return kq; }, tai};

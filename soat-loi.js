@@ -279,5 +279,5 @@ Viết bằng tiếng Việt, xưng "mình", gọi "bạn":
   const root = $("#sKq");
   const mo = (buf, ten, mau) => { root.hidden = false; SOAT.load(root, buf, ten, mau); };
   ganDrop($("#sDrop"), $("#sFile"), async fs => mo(await docBuf(fs[0]), fs[0].name, false));
-  $("#sMau").addEventListener("click", () => mo(SOAT.sampleBook(), "Bao-cao-doanh-thu-Q3-mau.xlsx", true));
+  $("#sMau").addEventListener("click", () => { const buf = SOAT.sampleBook(); mo(buf, "Bao-cao-doanh-thu-Q3-mau.xlsx", true); window.TL.xemGoc("soat", [{ten: "Bao-cao-doanh-thu-Q3-mau.xlsx", buf}]); });
 })();

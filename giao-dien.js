@@ -142,7 +142,7 @@
   ["dragenter", "dragover"].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add("over"); }));
   ["dragleave", "drop"].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.remove("over"); }));
   dz.addEventListener("drop", e => e.dataTransfer.files[0] && docFile(e.dataTransfer.files[0]));
-  $("#mau").addEventListener("click", () => moFile(fileMau(), "danh-sach-mau.xlsx"));
+  $("#mau").addEventListener("click", () => { const buf = fileMau(); moFile(buf, "danh-sach-mau.xlsx"); window.TL.xemGoc("lamsach", [{ten: "danh-sach-mau.xlsx", buf}]); });
   $("#sheet").addEventListener("change", e => napSheet(+e.target.value));
   ["#oNFC", "#oTach", "#oTrong", "#oTrung", "#khoaTrung"].forEach(id => $(id).addEventListener("change", () => rows && chay()));
   document.querySelectorAll("[data-loc]").forEach(b => b.addEventListener("click", () => {

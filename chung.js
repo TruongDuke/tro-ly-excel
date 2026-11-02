@@ -105,5 +105,65 @@
   }
   const fileMau = (sheets) => { const wb = XLSX.utils.book_new(); sheets.forEach(([n, aoa]) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), n)); return XLSX.write(wb, {bookType: "xlsx", type: "array"}); };
 
-  window.TL = {$, esc, boDau, rong, moThe, docBuf, docWb, bangSheet, khoaCot, ganDrop, hien, so, veBang, sheetTu, taiWb, fileMau};
+  // ---------- xem file mẫu gốc (chưa xử lý) để so với kết quả ----------
+  // files = [{ten, buf}]; hiện ngay dưới thẻ đầu của tab, tự ẩn khi người dùng nạp file thật
+  const taiVe = (data, ten) => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data])); a.download = ten; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+  const thutXml = x => { let n = 0; return x.replace(/>\s*</g, ">\n<").split("\n").map(d => {
+    if (/^<\//.test(d)) n--; const r = "  ".repeat(Math.max(0, n)) + d;
+    if (/^<[^!?/][^>]*[^/]>$/.test(d) || /^<[a-zA-Z][^>]*>$/.test(d) && !/<\//.test(d)) n++; return r; }).join("\n"); };
+  function bangGoc(ws, an) {
+    if (!ws || !ws["!ref"]) return `<p class="note">Sheet trống.</p>`;
+    const rg = XLSX.utils.decode_range(ws["!ref"]), het = Math.min(rg.e.r, rg.s.r + 199);
+    let h = `<table><thead><tr><th class="rn"></th>`;
+    for (let c = rg.s.c; c <= rg.e.c; c++) h += `<th style="text-align:center">${XLSX.utils.encode_col(c)}</th>`;
+    h += "</tr></thead><tbody>";
+    for (let r = rg.s.r; r <= het; r++) {
+      h += `<tr><td class="rn">${r + 1}</td>`;
+      for (let c = rg.s.c; c <= rg.e.c; c++) {
+        const o = ws[XLSX.utils.encode_cell({r, c})];
+        const v = !o ? "" : o.t === "n" ? (/%/.test(o.z || "") ? hien(o.v * 100) + "%" : hien(o.v)) : o.t === "e" ? (o.w || "#LỖI") : String(o.v ?? "");
+        h += `<td class="${o && o.t === "n" ? "n" : ""}"${o && o.f ? ` title="=${esc(o.f)}"` : ""}>${o && o.f ? `<span class="muted" style="font-size:11px">fx</span> ` : ""}${esc(v)}</td>`;
+      }
+      h += "</tr>";
+    }
+    return h + `</tbody></table>${het < rg.e.r ? `<p class="note" style="padding:8px">Đang hiện 200/${rg.e.r - rg.s.r + 1} dòng.</p>` : ""}`;
+  }
+  function xemGoc(tab, files) {
+    const t = document.querySelector(`.tab[data-tab="${tab}"]`);
+    let el = t.querySelector(".goc");
+    if (!el) {
+      el = document.createElement("section"); el.className = "card goc";
+      t.querySelector(".card").after(el);
+      t.querySelectorAll("input[type=file]").forEach(i => i.addEventListener("change", () => { el.hidden = true; }));
+      t.querySelectorAll(".drop").forEach(d => d.addEventListener("drop", () => { el.hidden = true; }));
+    }
+    el.hidden = false;
+    let chon = 0;
+    const ve = () => {
+      const f = files[chon], xml = /\.xml$/i.test(f.ten);
+      let than;
+      if (xml) than = `<pre class="xml">${esc(thutXml(new TextDecoder().decode(f.buf)))}</pre>`;
+      else {
+        const wb = XLSX.read(f.buf, {type: "array", cellFormula: true, cellNF: true, cellDates: false});
+        const an = (wb.Workbook && wb.Workbook.Sheets) || [];
+        than = wb.SheetNames.map((n, i) => `<h4 class="muted" style="margin:4px 0">Sheet: ${esc(n)}${an[i] && an[i].Hidden ? " (sheet ẩn)" : ""}</h4><div class="grid" style="max-height:340px">${bangGoc(wb.Sheets[n])}</div>`).join("");
+      }
+      el.innerHTML = `<details open><summary style="cursor:pointer"><b>📄 File mẫu gốc, chưa xử lý</b> <span class="muted">· so với kết quả bên dưới để thấy trang đã làm gì</span></summary>
+        <div style="display:grid;gap:10px;margin-top:10px">
+        <div class="row" style="justify-content:space-between">
+          <div class="loc">${files.length > 1 ? files.map((x, i) => `<button type="button" data-g="${i}" class="${i === chon ? "" : "ghost"}">${esc(x.ten)}</button>`).join("") : `<span class="pill">${esc(f.ten)}</span>`}</div>
+          <button class="ghost sm" type="button" data-tai>${files.length > 1 ? `Tải ${files.length} file mẫu (.zip)` : "Tải file mẫu về máy"}</button></div>
+        ${than}</div></details>`;
+      el.querySelectorAll("[data-g]").forEach(b => b.addEventListener("click", () => { chon = +b.dataset.g; ve(); }));
+      el.querySelector("[data-tai]").addEventListener("click", () => {
+        if (files.length === 1) return taiVe(files[0].buf, files[0].ten);
+        const z = XLSX.CFB.utils.cfb_new();
+        files.forEach(x => XLSX.CFB.utils.cfb_add(z, "/" + x.ten, x.buf));
+        taiVe(new Uint8Array(XLSX.CFB.write(z, {type: "array", fileType: "zip"})), `file-mau-${tab}.zip`);
+      });
+    };
+    ve();
+  }
+
+  window.TL = {$, esc, boDau, rong, moThe, docBuf, docWb, bangSheet, khoaCot, ganDrop, hien, so, veBang, sheetTu, taiWb, fileMau, xemGoc};
 })();

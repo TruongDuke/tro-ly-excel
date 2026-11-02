@@ -228,7 +228,7 @@ ${o.khongMa ? "" : "<MCCQT>00" + o.so.padStart(6, "0") + "A1B2C3D4E5F6A7B8C9D0E1
   }
 
   ganDrop($("#hDrop"), $("#hFile"), them);
-  $("#hMau").addEventListener("click", () => { hds = []; hong = []; loc = "tat"; them(mau()); });
+  $("#hMau").addEventListener("click", () => { hds = []; hong = []; loc = "tat"; const m = mau(); them(m); window.TL.xemGoc("hoadon", m); });
   $("#hTai").addEventListener("click", tai);
   window._hoaDon = {get kq() { return kq; }, get hds() { return hds; }, docChu, tai};
 })();
