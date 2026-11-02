@@ -64,6 +64,7 @@ td{border:1px solid var(--line);padding:5px 9px;white-space:nowrap;max-width:280
 td.n{text-align:right}
 td.sua{background:var(--sua)} td.loi{background:var(--loi);color:var(--loi-ink);font-weight:600}
 td.ca{background:var(--a)} td.cb{background:var(--b)}
+tr.cong td{font-weight:700}
 tr.xoa td:not(.rn){background:var(--xoa);color:var(--muted);text-decoration:line-through}
 td .cu{display:block;font-size:11px;color:var(--muted);text-decoration:line-through}
 .loc{display:flex;gap:6px;flex-wrap:wrap}
@@ -146,7 +147,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
 <div class="wrap">
   <header>
     <h1>Trợ lý <span>văn phòng</span></h1>
-    <p>Biến chữ dán từ ChatGPT, Claude thành file Word đúng chuẩn trình bày. Làm sạch, gộp, đối chiếu và soát lỗi file Excel. Không cần cài, không cần tài khoản, file chỉ xử lý trên máy bạn.</p>
+    <p>Biến chữ dán từ ChatGPT, Claude thành file Word đúng chuẩn trình bày. Làm sạch, gộp, đối chiếu và soát lỗi file Excel. Đọc hàng loạt hoá đơn điện tử XML ra bảng kê. Không cần cài, không cần tài khoản, file chỉ xử lý trên máy bạn.</p>
   </header>
   <nav class="the" id="the">
     <button type="button" data-the="word" class="on">📝 Dán từ AI → Word chuẩn</button>
@@ -154,6 +155,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     <button type="button" data-the="gop">📚 Gộp nhiều file</button>
     <button type="button" data-the="doichieu">⚖️ Đối chiếu 2 danh sách</button>
     <button type="button" data-the="soat">🔍 Soát lỗi trước khi gửi</button>
+    <button type="button" data-the="hoadon">🧾 Hoá đơn XML → Bảng kê</button>
   </nav>
 
   <!-- ================= LÀM SẠCH ================= -->
@@ -281,6 +283,31 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     <section class="card" id="sKq" hidden></section>
   </div>
 
+  <!-- ================= HOÁ ĐƠN ================= -->
+  <div class="tab" data-tab="hoadon" hidden>
+    <section class="card">
+      <p class="muted" style="margin:0">Thả cả trăm file XML hoá đơn điện tử (tải từ hoadondientu.gdt.gov.vn hoặc email nhà cung cấp) vào một lần, ra ngay bảng kê Excel: số hoá đơn, ngày, MST, tiền chưa thuế, thuế suất, tiền thuế, tổng thanh toán, kèm sheet tổng hợp theo thuế suất và chi tiết từng mặt hàng. Trang soát luôn hoá đơn trùng, cộng tiền sai, số tiền bằng chữ sai, ghi nhầm MST công ty, thiếu mã cơ quan thuế.</p>
+      <div class="drop" id="hDrop">
+        <div><strong>Thả các file hoá đơn .xml (hoặc file .zip) vào đây</strong><span class="muted">Chọn được nhiều file một lúc · chuẩn hoá đơn điện tử Thông tư 78</span></div>
+        <div class="row"><label class="btn filebtn">Chọn các file<input type="file" id="hFile" accept=".xml,.zip" multiple></label>
+          <button class="ghost" id="hMau" type="button">Thử với 8 hoá đơn mẫu</button></div>
+      </div>
+      <div id="hDs"></div>
+    </section>
+    <section class="card" id="hKq" hidden>
+      <div class="row" style="justify-content:space-between"><h2>Bảng kê hoá đơn</h2><button id="hTai" type="button">Tải bảng kê (.xlsx)</button></div>
+      <div class="tong" id="hTong"></div>
+      <p class="note" id="hMinh"></p>
+      <div class="grid" id="hSuat" style="max-width:640px"></div>
+      <div class="row" style="justify-content:space-between">
+        <div class="legend"><span><i style="background:var(--loi)"></i>Lỗi cần sửa</span><span><i style="background:var(--sua)"></i>Lưu ý</span><span><i style="background:var(--xoa)"></i>Hoá đơn trùng, không cộng</span></div>
+        <div class="loc" id="hLoc"></div>
+      </div>
+      <div class="grid" id="hGrid"></div>
+      <p class="note">File tải về gồm 4 sheet: <span class="pill">Bảng kê hoá đơn</span> <span class="pill">Theo thuế suất</span> (để lên tờ khai GTGT) <span class="pill">Chi tiết hàng hoá</span> <span class="pill">Cần xem lại</span>. Rê chuột vào ô "Kiểm tra" để đọc hết ghi chú.</p>
+    </section>
+  </div>
+
   <footer>Trợ lý văn phòng · làm bằng code chạy ngay trong trình duyệt, không lưu và không gửi file của bạn đi đâu.</footer>
 </div>
 
@@ -291,6 +318,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
 <script src="gop.js"></script>
 <script src="doi-chieu.js"></script>
 <script src="soat-loi.js"></script>
+<script src="hoa-don.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
 <script src="word.js"></script>
