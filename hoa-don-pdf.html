@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hoá đơn PDF ra sổ bán hàng</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+<style>
+/* Cùng bộ màu với Trợ lý văn phòng: xanh Excel, nền giấy */
+:root{
+  --bg:#f4f6f3; --surface:#fff; --ink:#1b2620; --muted:#5d6a63; --line:#dbe2dc;
+  --xl:#107c41; --xl-ink:#fff; --xl-soft:#e1f1e7; --tra:#e7f0fb; --tra-ink:#1f4f8a;
+  --sua:#fff3c4; --sua-ink:#7a5a00; --loi:#fde4e1; --loi-ink:#b3261e; --xoa:#eceff1;
+  --f:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#111613; --surface:#18201b; --ink:#e6ece8; --muted:#9aa8a0; --line:#2b3630;
+  --xl:#3fbf7a; --xl-ink:#0b1a12; --xl-soft:#173324; --tra:#18263a; --tra-ink:#9cc3f0;
+  --sua:#3b3214; --sua-ink:#f2d27a; --loi:#3d1f1c; --loi-ink:#ff8f84; --xoa:#232a26; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--f)}
+.wrap{max-width:1180px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-left)) 64px;display:grid;gap:18px}
+header{display:grid;gap:6px}
+.badge{justify-self:start;font:700 12px var(--f);letter-spacing:.05em;text-transform:uppercase;background:var(--xl-soft);color:var(--xl);padding:4px 10px;border-radius:999px}
+h1{margin:0;font-size:clamp(26px,4.5vw,38px);line-height:1.1;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+h1 span{color:var(--xl)}
+header p{margin:0;color:var(--muted);max-width:72ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:14px;min-width:0}
+h2{margin:0;font-size:17px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sb{justify-content:space-between}
+.muted{color:var(--muted);font-size:13.5px}
+.note{font-size:12.5px;color:var(--muted);margin:0}
+button,.btn{font:600 14.5px var(--f);border-radius:8px;padding:10px 16px;cursor:pointer;border:1.5px solid var(--xl);background:var(--xl);color:var(--xl-ink);display:inline-block}
+button.ghost,.btn.ghost{background:transparent;color:var(--xl)}
+button.sm{padding:6px 12px;font-size:13.5px}
+button:focus-visible,.btn:focus-within,input:focus-visible{outline:3px solid var(--xl);outline-offset:2px}
+.big{font-size:16px;padding:13px 22px}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:20px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between;background:var(--bg)}
+.drop.over{border-color:var(--xl);background:var(--xl-soft)}
+.drop strong{display:block;font-size:16px}
+.filebtn input{position:absolute;width:1px;height:1px;opacity:0}
+.hai{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:14px;align-items:start}
+@media (max-width:820px){.hai{grid-template-columns:1fr}}
+.ds{display:grid;gap:6px}
+.f{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:8px 12px;font-size:13.5px;cursor:pointer;text-align:left;color:var(--ink);font-weight:500}
+.f.on{border-color:var(--xl);box-shadow:inset 3px 0 0 var(--xl)}
+.f b{overflow-wrap:anywhere;font-weight:600}
+.tag{font:700 12px var(--f);padding:2px 9px;border-radius:999px;background:var(--xl-soft);color:var(--xl);white-space:nowrap}
+.tag.x{background:var(--loi);color:var(--loi-ink)} .tag.s{background:var(--sua);color:var(--sua-ink)} .tag.t{background:var(--tra);color:var(--tra-ink)}
+.xem{border:1px solid var(--line);border-radius:10px;background:#fff;overflow:auto;max-height:640px}
+.xem canvas{display:block;width:100%;height:auto}
+.tong{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tong div{border-radius:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--line)}
+.tong b{display:block;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.tong .o b{color:var(--xl)} .tong .l b{color:var(--loi-ink)} .tong .s b{color:var(--sua-ink)}
+.van{display:grid;gap:8px}
+.vd{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;align-items:start;background:var(--bg);border:1px solid var(--line);border-left:5px solid var(--sua-ink);border-radius:8px;padding:9px 12px;font-size:14px}
+.vd.loi{border-left-color:var(--loi-ink)}
+.vd code{grid-row:span 2;font:600 12.5px var(--mono);background:var(--xl-soft);color:var(--xl);padding:3px 7px;border-radius:4px;white-space:nowrap}
+.vd span{color:var(--muted);font-size:13px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px;border:1px solid var(--line)}
+.grid{overflow:auto;max-height:620px;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;min-width:100%}
+th{position:sticky;top:0;background:var(--bg);color:var(--muted);font:600 12px var(--f);border:1px solid var(--line);padding:6px 9px;text-align:left;z-index:1;white-space:nowrap}
+td{border:1px solid var(--line);padding:5px 9px;white-space:nowrap;background:var(--surface)}
+td.n{text-align:right} td.g{color:var(--muted);font-size:12px;text-align:right}
+td.tra{background:var(--tra);color:var(--tra-ink)} td.can{background:var(--sua);color:var(--sua-ink);font-style:italic}
+td.loi{background:var(--loi);color:var(--loi-ink);font-weight:700}
+tr.daco td{background:var(--xoa);color:var(--muted);text-decoration:line-through}
+tr.dau td{border-top:2px solid var(--muted)}
+footer{font-size:12.5px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="badge">Bản demo cho kế toán bán hàng</span>
+    <h1>Hoá đơn PDF ra sổ bán hàng, <span>khỏi gõ tay</span></h1>
+    <p>Thả cả loạt hoá đơn PDF trong ngày vào (kèm file sổ chi tiết bán hàng đang dùng nếu có). Trang đọc từng dòng hàng, tách mã hàng, số PO, tự tra mã khách, hạn thanh toán, brand, nhân viên bán theo các dòng đã nhập trước, rồi xuất đúng các cột của sổ.</p>
+  </header>
+
+  <section class="card">
+    <div class="drop" id="drop">
+      <div><strong>Thả hoá đơn PDF và file sổ bán hàng (.xlsx) vào đây</strong><span class="muted">Chọn nhiều file một lúc · file sổ để máy tra mã khách, brand, hạn thanh toán và báo hoá đơn đã nhập rồi</span></div>
+      <div class="row"><label class="btn ghost filebtn">Chọn file<input type="file" id="file" accept=".pdf,.xlsx,.xls" multiple></label>
+        <button class="big" id="mau" type="button">Chạy thử 9 hoá đơn mẫu</button></div>
+    </div>
+    <div class="hai" id="vao" hidden>
+      <div class="ds" id="ds"></div>
+      <div class="xem" id="xem"></div>
+    </div>
+  </section>
+
+  <section class="card" id="kq" hidden>
+    <div class="row sb"><h2>Dòng mới cho sổ chi tiết bán hàng</h2><div class="row"><button class="ghost" id="taiSo" type="button" hidden>Tải sổ đã nối thêm</button><button id="tai" type="button">Tải dòng mới (.xlsx)</button></div></div>
+    <div class="tong" id="tong"></div>
+    <div class="van" id="van"></div>
+    <div class="legend"><span><i style="background:var(--surface)"></i>Đọc từ hoá đơn</span><span><i style="background:var(--tra)"></i>Tra từ sổ đã nhập</span><span><i style="background:var(--sua)"></i>Chưa có trong sổ, cần điền</span><span><i style="background:var(--xoa)"></i>Hoá đơn đã có trong sổ, không thêm</span></div>
+    <div class="grid" id="bang"></div>
+    <p class="note">Ngày đến hạn = ngày hoá đơn + số ngày nợ của khách. Trễ hạn tính đến hôm nay (số âm là còn bao nhiêu ngày).</p>
+  </section>
+
+  <footer>Chạy ngay trong trình duyệt, file không gửi đi đâu · Bản demo dùng hoá đơn và khách hàng giả</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+  const boDau = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
+  const rong = v => v === null || v === undefined || String(v).trim() === "";
+  const soVN = s => { const t = String(s).trim(); if (!/^-?[\d.]+(,\d+)?$/.test(t)) return null; return +t.replace(/\./g, "").replace(",", "."); };
+  const sv = n => n === null || n === undefined || n === "" ? "" : (+n).toLocaleString("vi-VN", {maximumFractionDigits: 2});
+  const ngayVN = d => d ? d.toLocaleDateString("vi-VN", {day: "2-digit", month: "2-digit", year: "numeric"}) : "";
+  const docNgay = s => { const m = String(s || "").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? new Date(+m[3], m[2] - 1, +m[1]) : null; };
+  const homNay = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+
+  // ---------- 25 cột của sổ chi tiết bán hàng ----------
+  const COT = [["makh", "Mã khách hàng"], ["tenkh", "Tên khách hàng"], ["sohd", "Số HĐ"], ["ngay", "Ngày bán hàng"], ["mathang", "Mặt hàng"], ["mahang", "Mã hàng"],
+    ["dvt", "Đơn vị tính"], ["sl", "Số Lượng"], ["dg", "Đơn giá"], ["tt", "Thành tiền chưa vat"], ["ttvat", "Thành tiền gồm Vat"], ["po", "Số PO"], ["ngaypo", "Ngày Po"],
+    ["tgtt", "Thời gian thanh toán"], ["han", "Ngày đến hạn thanh toán"], ["tinhtrang", "Tình trạng"], ["tre", "Trễ hạn thanh toán"], ["brand", "Brand"],
+    ["nv", "Nhân viên bán hàng"], ["nhap", "Nhập Từ"], ["maxk", "Mã xuất kho"], ["contact", "Contact info \nEmail, mobile phone"], ["giamua", "Giá mua"], ["a1", "Action 1"], ["a2", "Action 2"]];
+  const SO_COT = new Set(["sl", "dg", "tt", "ttvat", "tgtt", "tre", "giamua"]), NGAY_COT = new Set(["ngay", "ngaypo", "han"]);
+
+  // ---------- đọc chữ trong PDF thành từng dòng, từng cụm có toạ độ ----------
+  async function docPdf(buf) {
+    const pdf = await pdfjsLib.getDocument({data: buf.slice(0)}).promise, dong = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const tc = await (await pdf.getPage(p)).getTextContent();
+      const it = tc.items.filter(i => i.str && i.str.trim()).map(i => ({s: i.str, x: i.transform[4], w: i.width, y: p * 100000 - i.transform[5]}));
+      it.sort((a, b) => a.y - b.y || a.x - b.x);
+      for (const i of it) {
+        let d = dong.find(d => Math.abs(d.y - i.y) <= 2.5);
+        if (!d) dong.push(d = {y: i.y, it: []});
+        d.it.push(i);
+      }
+    }
+    dong.sort((a, b) => a.y - b.y);
+    dong.forEach(d => {
+      d.it.sort((a, b) => a.x - b.x);
+      d.cum = [];
+      for (const i of d.it) {
+        const c = d.cum[d.cum.length - 1];
+        if (c && i.x - c.x1 < 4) { c.t += (i.x - c.x1 > .8 ? " " : "") + i.s; c.x1 = Math.max(c.x1, i.x + i.w); }
+        else d.cum.push({t: i.s, x0: i.x, x1: i.x + i.w});
+      }
+      d.cum.forEach(c => { c.t = c.t.replace(/\s+/g, " ").trim(); c.cx = (c.x0 + c.x1) / 2; });
+      d.t = d.cum.map(c => c.t).join("  ");
+    });
+    return {dong, pdf};
+  }
+
+  const PO_RE = /\(?\s*theo\s+(?:đơn hàng\s+|po\s*(?:số)?)\s*:?\s*([A-Z0-9][\w\-\/.]*?)\s*(?:ngày\s*(\d{1,2}\/\d{1,2}\/\d{4}))?\s*\)?\s*$/i;
+  function docHoaDon(dong) {
+    const tim = re => { for (const d of dong) { const m = d.t.match(re); if (m) return m; } return null; };
+    const hd = {};
+    hd.kh = (tim(/Ký hiệu[^:]*:\s*([0-9][A-Z0-9]{5,6})/i) || [])[1] || "";
+    hd.so = (tim(/Số\s*\((?:No|Invoice No)\.?\)\s*:?\s*0*(\d+)/i) || tim(/^Số\s*:?\s*0*(\d+)/i) || [])[1] || "";
+    const n = tim(/Ngày[^0-9]*(\d{1,2})\s*tháng[^0-9]*(\d{1,2})\s*năm[^0-9]*(\d{4})/i);
+    hd.ngay = n ? new Date(+n[3], n[2] - 1, +n[1]) : null;
+    hd.ban = (dong.find(d => /CÔNG TY|CTY/i.test(d.t)) || {}).t || "";
+    hd.mua = ((tim(/Tên đơn vị[^:]*:\s*(.+)$/i) || [])[1] || "").trim();
+    const msts = dong.map(d => d.t.match(/Mã số thuế[^:]*:\s*([\d\s-]{10,})/i)).filter(Boolean).map(m => m[1].replace(/\s/g, ""));
+    hd.mstBan = msts[0] || ""; hd.mstMua = msts[1] || "";
+    const tien = re => { const m = tim(re); return m ? soVN(m[1]) : null; };
+    hd.cong = tien(/Cộng tiền hàng[^:]*:\s*([\d.,]+)/i);
+    hd.thue = tien(/Tiền thuế GTGT[^:]*:\s*([\d.,]+)/i);
+    hd.tong = tien(/Tổng cộng tiền thanh toán[^:]*:\s*([\d.,]+)/i);
+    const ts = tim(/Thuế suất GTGT[^:]*:\s*(\d+)\s*%/i); hd.ts = ts ? +ts[1] : null;
+    hd.mccqt = ((tim(/Mã của cơ quan thuế[^:]*:\s*([A-F0-9]{20,})/i) || [])[1]) || "";
+
+    // bảng hàng: lấy tâm 6 cột từ dòng đánh số (1) (2) ... (6)
+    const iCot = dong.findIndex(d => d.cum.filter(c => /^\(\d\)/.test(c.t)).length >= 5);
+    const iHet = dong.findIndex((d, i) => i > iCot && /Cộng tiền hàng/i.test(d.t));
+    hd.dong = []; hd.ghiChu = [];
+    if (iCot < 0 || iHet < 0) return hd;
+    const tam = dong[iCot].cum.filter(c => /^\(\d\)/.test(c.t)).slice(0, 6).map(c => c.cx);
+    const cotCua = c => {   // cột STT hẹp: chữ ngắn của tên hàng xuống dòng hay rơi nhầm vào đây
+      let k = 0; for (let j = 1; j < tam.length; j++) if (c.cx > (tam[j - 1] + tam[j]) / 2) k = j;
+      return k === 0 && !/^\d+$/.test(c.t) ? 1 : k;
+    };
+    const vung = dong.slice(iCot + 1, iHet).map(d => { const o = [[], [], [], [], [], []]; d.cum.forEach(c => o[cotCua(c)].push(c.t)); return {y: d.y, o: o.map(a => a.join(" "))}; });
+    const hang = vung.filter(v => soVN(v.o[5]) !== null && (soVN(v.o[3]) !== null || /^\d+$/.test(v.o[0])));
+    hang.forEach(h => { h.ten = []; });
+    vung.filter(v => !hang.includes(v) && v.o[1]).forEach(v => {
+      if (/^\(?\s*theo\s+(po|đơn hàng)/i.test(v.o[1])) { hd.ghiChu.push(v.o[1]); return; }
+      if (!hang.length) return;
+      const gan = hang.reduce((a, b) => Math.abs(b.y - v.y) < Math.abs(a.y - v.y) ? b : a);
+      gan.ten.push(v);
+    });
+    hang.forEach(h => {
+      const ten = [...h.ten, {y: h.y, o: h.o}].sort((a, b) => a.y - b.y).map(v => v.o[1]).filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+      hd.dong.push({stt: h.o[0], ten, dvt: h.o[2], sl: soVN(h.o[3]), dg: soVN(h.o[4]), tt: soVN(h.o[5])});
+    });
+    return hd;
+  }
+
+  // ---------- sổ chi tiết bán hàng đã có: tra khách, mặt hàng, hoá đơn đã nhập ----------
+  const chuanKH = s => boDau(s).replace(/cong ty|cty/g, "").replace(/co phan/g, "cp").replace(/trach nhiem huu han/g, "tnhh").replace(/chi nhanh/g, "cn").replace(/[^a-z0-9]/g, "");
+  const chuanMa = s => String(s ?? "").toUpperCase().replace(/\s+/g, "");
+  function docSo(ten, buf) {
+    const wb = XLSX.read(buf, {type: "array", cellDates: true}), ws = wb.Sheets[wb.SheetNames[0]];
+    const all = XLSX.utils.sheet_to_json(ws, {header: 1, raw: true, defval: ""});
+    const iHd = all.findIndex(r => r.some(v => /^so hd$/.test(boDau(v))) && r.some(v => /^ma hang$/.test(boDau(v))));
+    if (iHd < 0) return null;
+    const hd = all[iHd].map(boDau), c = {};
+    COT.forEach(([k, t]) => { c[k] = hd.indexOf(boDau(t)); });
+    if (c.contact < 0) c.contact = hd.findIndex(h => /^contact/.test(h));
+    const rows = all.slice(iHd + 1).filter(r => !r.every(rong)).map(r => r.slice(0, Math.max(25, hd.filter(Boolean).length)));
+    const kh = new Map(), sp = new Map(), soHD = new Set();
+    rows.forEach(r => {
+      const g = k => c[k] >= 0 ? r[c[k]] : "";
+      if (!rong(g("sohd"))) soHD.add(String(g("sohd")).trim().replace(/^0+/, ""));
+      if (!rong(g("tenkh"))) { const o = kh.get(chuanKH(g("tenkh"))) || {}; ["makh", "tgtt", "nv", "contact"].forEach(k => { if (!rong(g(k))) o[k] = g(k); }); kh.set(chuanKH(g("tenkh")), o); }
+      if (!rong(g("mahang")) && !rong(g("dg"))) { const o = sp.get(chuanMa(g("mahang"))) || {}; o.ma = String(g("mahang")).trim(); ["mathang", "brand", "nhap", "giamua", "maxk"].forEach(k => { if (!rong(g(k))) o[k] = g(k); }); sp.set(chuanMa(g("mahang")), o); }
+    });
+    return {ten, all, iHd, rows, kh, sp, soHD};
+  }
+
+  // ---------- dữ liệu mẫu ----------
+  const MAU_PDF = [1041, 1042, 1043, 1044, 1045, 1046, 1047, "1047 (1)", 1048].map(n => `2026_1102_1C26TAP_${String(n).replace(" (1)", "_0318888888 (1)").replace(/^(\d+)$/, "$1_0318888888")}.pdf`);
+  function soMau() {
+    const KH = [["3101", "Công ty TNHH Bao bì Minh Long", 30, "Ngân", "muahang@minhlong-demo.vn"], ["3102", "Cty CP Thực phẩm Sao Việt - CN Bình Dương", 45, "Hoà", "0908 111 222 (chị Thu)"],
+      ["3103", "Công ty TNHH Dệt may Phú An", 60, "Ngân", "kythuat@phuan-demo.vn"], ["3104", "Công ty TNHH Nhựa Tân Thành", 90, "Phúc", "0913 333 444"], ["3105", "Công ty CP Giấy Hưng Phát", 30, "Hoà", "purchase@hungphat-demo.vn"]];
+    const SP = {SC63X100: ["Xy lanh khí nén", "Cái", 780000, "AT", "Kho HCM", 610000], MAL25X50: ["Xy lanh mini", "Cái", 365000, "AT", "Kho HCM", 285000], "4V210-08": ["Van điện từ 5/2", "Cái", 285000, "AT", "NCC Hải Đăng", 220000],
+      PU0806: ["Ống hơi PU 8x6", "Mét", 14000, "ZK", "Kho HCM", 9000], "PC8-02": ["Đầu nối thẳng", "Cái", 11000, "ZK", "Kho HCM", 6500], AFR2000: ["Bộ lọc điều áp", "Bộ", 420000, "AT", "NCC Hải Đăng", 310000],
+      "ASC200-08": ["Van tiết lưu", "Cái", 62000, "AT", "Kho HCM", 45000], "CS1-J": ["Cảm biến từ", "Cái", 55000, "AT", "Kho HCM", 38000]};
+    const ds = [[1012, 0, "SC63X100", 6, "ML-2609-087", "08/10/2026"], [1012, 0, "PU0806", 150], [1015, 1, "AFR2000", 4, "4500120045", "10/10/2026"], [1015, 1, "PC8-02", 40],
+      [1019, 2, "MAL25X50", 8, "PA-0431", "14/10/2026"], [1021, 3, "ASC200-08", 30, "TT-1015", "15/10/2026"], [1021, 3, "CS1-J", 30], [1024, 4, "4V210-08", 10, "HP-26-0712", "17/10/2026"],
+      [1028, 0, "4V210-08", 8, "ML-2610-102", "21/10/2026"], [1028, 0, "PC8-02", 120], [1033, 1, "SC63X100", 3, "4500121877", "24/10/2026"], [1036, 2, "SC63X100", 4, "PA-0447", "27/10/2026"],
+      [1039, 4, "PU0806", 300, "HP-26-0760", "29/10/2026"], [1043, 2, "MAL25X50", 10, "PA-0456", "30/10/2026"]];
+    const aoa = [COT.map(c => c[1])];
+    let po = "", npo = "";
+    ds.forEach(([so, k, ma, sl, p, np], i) => {
+      if (p) { po = p; npo = np; }
+      const [mk, tk, tg, nv, ct] = KH[k], [mh, dvt, dg, br, nh, gm] = SP[ma];
+      const ngay = so === 1043 ? new Date(2026, 10, 2) : new Date(2026, 9, 5 + Math.round((so - 1010) * .8));
+      const han = new Date(+ngay + tg * 864e5), tre = Math.round((homNay() - han) / 864e5);
+      aoa.push([mk, tk, String(so), ngay, mh, ma, dvt, sl, dg, sl * dg, Math.round(sl * dg * 1.08), po, docNgay(npo), tg, han, i < 6 ? "đã thanh toán" : "chưa đến hạn", i < 6 ? 0 : tre, br, nv, nh, "", ct, gm, "", ""]);
+    });
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa, {cellDates: true}), "Sheet1");
+    return {ten: "Chi tiet ban hang.xlsx", buf: new Uint8Array(XLSX.write(wb, {bookType: "xlsx", type: "array"}))};
+  }
+
+  // ---------- nạp file ----------
+  let hds = [], so = null, kq = null, dangXem = -1;
+  async function them(fs) {
+    for (const f of fs) {
+      const ten = f.name || f.ten, buf = f.buf || new Uint8Array(await f.arrayBuffer());
+      try {
+        if (/\.xlsx?$/i.test(ten)) { so = docSo(ten, buf) || so; if (!so) hds.push({ten, loi: "Không thấy cột Số HĐ và Mã hàng trong file Excel"}); continue; }
+        const {dong, pdf} = await docPdf(buf), hd = docHoaDon(dong);
+        hd.ten = ten; hd.pdf = pdf;
+        if (!dong.length) hd.loi = "PDF dạng ảnh scan, không có lớp chữ";
+        else if (!hd.so || !hd.dong.length) hd.loi = "Không nhận ra bố cục hoá đơn";
+        hds.push(hd);
+      } catch (e) { hds.push({ten, loi: e.message}); }
+    }
+    chay();
+    if (dangXem < 0) xemPdf(hds.findIndex(h => h.pdf));
+  }
+
+  // ---------- ghép thành dòng sổ, tra cứu, soát ----------
+  function chay() {
+    const t0 = performance.now(), dong = [], van = [], daGap = new Map();
+    const sp = so ? so.sp : new Map(), kh = so ? so.kh : new Map();
+    const maBiet = [...sp.keys()].sort((a, b) => b.length - a.length);
+    hds.forEach(hd => {
+      hd.trung = null; hd.daCo = false;
+      if (hd.loi) return;
+      const khoa = hd.mstBan + "|" + hd.kh + "|" + hd.so;
+      if (daGap.has(khoa)) { hd.trung = daGap.get(khoa); return; }
+      daGap.set(khoa, hd.ten);
+      hd.daCo = !!(so && so.soHD.has(hd.so));
+      const k = kh.get(chuanKH(hd.mua)), vd = [], loi = [];
+      if (hd.daCo) loi.push("Số HĐ này đã có trong sổ, không thêm lần nữa");
+      const tongDong = hd.dong.reduce((s, d) => s + (d.tt || 0), 0);
+      if (hd.cong !== null && Math.abs(tongDong - hd.cong) > 1) loi.push(`Cộng các dòng ${sv(tongDong)} khác cộng tiền hàng ${sv(hd.cong)}`);
+      if (hd.cong !== null && hd.ts !== null && hd.thue !== null && Math.abs(hd.cong * hd.ts / 100 - hd.thue) > 1) loi.push(`Tiền thuế ${sv(hd.thue)} khác ${hd.ts}% × ${sv(hd.cong)}`);
+      if (hd.cong !== null && hd.thue !== null && hd.tong !== null && Math.abs(hd.cong + hd.thue - hd.tong) > 1) loi.push("Tổng thanh toán khác tiền hàng + thuế");
+      if (so && !k) vd.push("Khách mới, chưa có trong sổ: cần điền mã khách, hạn thanh toán");
+      const poHD = hd.ghiChu.map(g => g.match(PO_RE)).find(Boolean) || hd.dong.map(d => d.ten.match(PO_RE)).find(Boolean);
+      const ts = hd.ts ?? 0;
+      hd.dong.forEach((d, j) => {
+        let ten = d.ten, po = poHD ? poHD[1] : "", npo = poHD ? docNgay(poHD[2]) : null;
+        const m = ten.match(PO_RE); if (m) { po = m[1]; npo = docNgay(m[2]); ten = ten.slice(0, m.index).trim(); }
+        const tenMa = chuanMa(ten); let ma = maBiet.find(c => tenMa.includes(c));
+        ma = ma ? sp.get(ma).ma : ((ten.split(" ").reverse().find(w => /\d/.test(w) && /^[A-Z0-9][A-Z0-9\-\/.]{2,}$/i.test(w) && !/^\d+x\d+$/i.test(w))) || "");
+        const s = sp.get(chuanMa(ma)), src = {};
+        const r = {makh: k?.makh ?? "", tenkh: hd.mua, sohd: hd.so, ngay: hd.ngay, mathang: s?.mathang ?? ten.replace(ma, "").replace(/\s+/g, " ").trim(), mahang: ma, dvt: d.dvt, sl: d.sl, dg: d.dg, tt: d.tt,
+          ttvat: d.tt === null ? null : Math.round(d.tt * (1 + ts / 100)), po, ngaypo: npo, tgtt: k?.tgtt ?? "", han: null, tinhtrang: "", tre: null,
+          brand: s?.brand ?? "", nv: k?.nv ?? "", nhap: s?.nhap ?? "", maxk: s?.maxk ?? "", contact: k?.contact ?? "", giamua: s?.giamua ?? "", a1: "", a2: ""};
+        ["makh", "tgtt", "nv", "contact"].forEach(c => src[c] = k ? (rong(r[c]) ? "" : "tra") : (so && ["makh", "tgtt", "nv"].includes(c) ? "can" : ""));
+        ["brand", "nhap", "giamua", "maxk"].forEach(c => src[c] = s ? (rong(r[c]) ? "" : "tra") : (so && ["brand", "giamua"].includes(c) ? "can" : ""));
+        if (s && s.mathang) src.mathang = "tra";
+        if (r.tgtt !== "" && hd.ngay) {
+          r.han = new Date(+hd.ngay + (+r.tgtt) * 864e5); r.tre = Math.round((homNay() - r.han) / 864e5);
+          r.tinhtrang = r.tre > 0 ? "quá hạn" : "chưa đến hạn"; src.han = src.tre = src.tinhtrang = "tinh";
+        }
+        if (d.sl !== null && d.dg !== null && d.tt !== null && Math.abs(d.sl * d.dg - d.tt) > 1) { loi.push(`Dòng ${j + 1}: ${sv(d.sl)} × ${sv(d.dg)} khác thành tiền ${sv(d.tt)}`); src.tt = "loi"; }
+        if (so && !s && ma) vd.push(`Mã hàng mới ${ma}: cần điền brand, giá mua`);
+        if (so && !ma) vd.push(`Dòng ${j + 1}: không tách được mã hàng từ "${ten}"`);
+        if (s && !rong(s.giamua) && d.dg !== null && d.dg < +s.giamua) { vd.push(`${ma} bán ${sv(d.dg)}, thấp hơn giá mua ${sv(s.giamua)}`); src.dg = "loi"; }
+        dong.push({r, src, hd, dau: j === 0});
+      });
+      if (!poHD) vd.push("Không thấy số PO trên hoá đơn");
+      if (loi.length || vd.length) van.push({hd, loi, vd});
+    });
+    const moi = dong.filter(d => !d.hd.daCo);
+    kq = {dong, moi, van, ms: performance.now() - t0};
+    ve();
+  }
+
+  function veDs() {
+    $("#vao").hidden = !hds.length && !so;
+    const tagHD = hd => hd.loi ? `<span class="tag x">${esc(hd.loi)}</span>` : hd.trung ? `<span class="tag x">Trùng file khác, bỏ qua</span>`
+      : hd.daCo ? `<span class="tag s">Đã có trong sổ</span>` : `<span class="tag">HĐ ${esc(hd.so)} · ${hd.dong.length} dòng · ${sv(hd.tong)}</span>`;
+    $("#ds").innerHTML = (so ? `<div class="f" style="cursor:default"><b>📒 ${esc(so.ten)}</b><span class="tag t">Sổ đã nhập · ${so.rows.length} dòng · ${so.kh.size} khách · ${so.sp.size} mã hàng</span></div>` : "")
+      + hds.map((hd, i) => `<button type="button" class="f ${i === dangXem ? "on" : ""}" data-i="${i}"><b>📄 ${esc(hd.ten)}</b>${tagHD(hd)}</button>`).join("")
+      + `<div><button class="ghost sm" id="xoa" type="button">Bỏ hết file</button></div>`;
+    $("#ds").querySelectorAll("[data-i]").forEach(b => b.onclick = () => xemPdf(+b.dataset.i));
+    $("#xoa").onclick = () => { hds = []; so = null; kq = null; dangXem = -1; $("#xem").innerHTML = ""; $("#kq").hidden = true; veDs(); };
+  }
+  async function xemPdf(i) {
+    if (i < 0 || !hds[i] || !hds[i].pdf) return;
+    dangXem = i; veDs();
+    const page = await hds[i].pdf.getPage(1), vp = page.getViewport({scale: 1.6}), cv = document.createElement("canvas");
+    cv.width = vp.width; cv.height = vp.height;
+    await page.render({canvasContext: cv.getContext("2d"), viewport: vp}).promise;
+    $("#xem").replaceChildren(cv);
+  }
+
+  function ve() {
+    veDs();
+    if (!kq || !kq.dong.length) { $("#kq").hidden = true; return; }
+    const {dong, moi, van, ms} = kq, docDuoc = hds.filter(h => !h.loi && !h.trung);
+    const tien = k => moi.reduce((s, d) => s + (d.r[k] || 0), 0);
+    $("#kq").hidden = false; $("#taiSo").hidden = !so;
+    $("#tong").innerHTML = `<div class="o"><b>${docDuoc.length}</b>hoá đơn đọc được${hds.length > docDuoc.length ? ` (bỏ ${hds.length - docDuoc.length} trùng/lỗi)` : ""}</div>
+      <div class="o"><b>${moi.length}</b>dòng hàng mới thêm vào sổ</div><div><b>${sv(tien("tt"))}</b>doanh thu chưa VAT</div><div><b>${sv(tien("ttvat"))}</b>gồm VAT</div>
+      <div class="s"><b>${van.length}</b>hoá đơn cần xem lại</div><div><b>${(Math.max(ms, 10) / 1000).toLocaleString("vi-VN", {maximumFractionDigits: 2})} giây</b>thời gian xử lý</div>`;
+    $("#van").innerHTML = van.length ? `<h2>Cần xem lại</h2>` + van.map(v => `<div class="vd ${v.loi.length ? "loi" : ""}"><code>HĐ ${esc(v.hd.so)}</code><b>${esc(v.hd.mua)}</b><span>${esc(v.loi.concat(v.vd).join(" · "))}</span></div>`).join("") : "";
+    const o = (d, k) => { const v = d.r[k], c = d.src[k] || ""; let t = NGAY_COT.has(k) ? ngayVN(v) : SO_COT.has(k) ? sv(v) : esc(v);
+      if (c === "can" && rong(v)) t = "cần điền"; return `<td class="${SO_COT.has(k) ? "n " : ""}${c}">${t}</td>`; };
+    $("#bang").innerHTML = `<table><thead><tr><th>#</th>${COT.map(c => `<th data-k="${c[0]}">${esc(c[1].split("\n")[0])}</th>`).join("")}</tr></thead><tbody>`
+      + dong.map((d, i) => `<tr class="${d.hd.daCo ? "daco" : ""} ${d.dau && i ? "dau" : ""}"><td class="g">${i + 1}</td>${COT.map(c => o(d, c[0]).replace("<td", `<td data-k="${c[0]}"`)).join("")}</tr>`).join("") + "</tbody></table>";
+  }
+
+  // ---------- xuất Excel ----------
+  const dongXuat = d => COT.map(([k]) => { const v = d.r[k]; return v === null || v === undefined ? "" : v; });
+  function sheet(aoa) {
+    const ws = XLSX.utils.aoa_to_sheet(aoa, {cellDates: true, dateNF: "dd/mm/yyyy"});
+    ws["!cols"] = COT.map(([k, t]) => ({wch: k === "tenkh" ? 40 : k === "mathang" ? 26 : k === "contact" ? 26 : Math.max(10, Math.min(t.length, 20) + 2)}));
+    return ws;
+  }
+  function tai() {
+    if (!kq) return;
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheet([COT.map(c => c[1]), ...kq.moi.map(dongXuat)]), "Chi tiết bán hàng");
+    const v = [["Số HĐ", "Khách hàng", "File", "Vấn đề"], ...kq.van.map(x => [x.hd.so, x.hd.mua, x.hd.ten, x.loi.concat(x.vd).join("; ")])];
+    const ws2 = XLSX.utils.aoa_to_sheet(v); ws2["!cols"] = [{wch: 8}, {wch: 44}, {wch: 40}, {wch: 80}];
+    XLSX.utils.book_append_sheet(wb, ws2, "Cần xem lại");
+    const ngay = kq.moi[0] && kq.moi[0].r.ngay ? ngayVN(kq.moi[0].r.ngay).replace(/\//g, "-") : "";
+    XLSX.writeFile(wb, `Chi-tiet-ban-hang_dong-moi_${ngay}.xlsx`);
+  }
+  function taiSo() {
+    if (!kq || !so) return;
+    const cu = so.all.slice(so.iHd), wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheet([...cu, ...kq.moi.map(dongXuat)]), "Sheet1");
+    XLSX.writeFile(wb, so.ten.replace(/\.xlsx?$/i, "") + " (đã cập nhật).xlsx");
+  }
+
+  // ---------- sự kiện ----------
+  const drop = $("#drop");
+  ["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => e.dataTransfer.files.length && them([...e.dataTransfer.files]));
+  $("#file").addEventListener("change", e => { if (e.target.files.length) them([...e.target.files]); e.target.value = ""; });
+  $("#mau").addEventListener("click", async () => {
+    hds = []; so = null; dangXem = -1;
+    const pdfs = await Promise.all(MAU_PDF.map(async t => ({ten: t, buf: new Uint8Array(await (await fetch("mau-pdf/" + encodeURIComponent(t))).arrayBuffer())})));
+    await them([soMau(), ...pdfs]);
+    $("#kq").scrollIntoView({behavior: "smooth"});
+  });
+  $("#tai").addEventListener("click", tai);
+  $("#taiSo").addEventListener("click", taiSo);
+  window._hdPdf = {get kq() { return kq; }, get hds() { return hds; }, tai, taiSo, them};
+})();
+</script>
+</body>
+</html>
