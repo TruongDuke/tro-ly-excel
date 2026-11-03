@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bảng điểm sát hạch lái xe</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+<style>
+/* Cùng bộ màu với Trợ lý văn phòng: xanh Excel, nền giấy */
+:root{
+  --bg:#f4f6f3; --surface:#fff; --ink:#1b2620; --muted:#5d6a63; --line:#dbe2dc;
+  --xl:#107c41; --xl-ink:#fff; --xl-soft:#e1f1e7;
+  --sua:#fff3c4; --sua-ink:#7a5a00; --loi:#fde4e1; --loi-ink:#b3261e; --xoa:#eceff1;
+  --f:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#111613; --surface:#18201b; --ink:#e6ece8; --muted:#9aa8a0; --line:#2b3630;
+  --xl:#3fbf7a; --xl-ink:#0b1a12; --xl-soft:#173324;
+  --sua:#3b3214; --sua-ink:#f2d27a; --loi:#3d1f1c; --loi-ink:#ff8f84; --xoa:#232a26; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--f)}
+.wrap{max-width:1180px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-left)) 64px;display:grid;gap:18px}
+header{display:grid;gap:6px}
+.badge{justify-self:start;font:700 12px var(--f);letter-spacing:.05em;text-transform:uppercase;background:var(--xl-soft);color:var(--xl);padding:4px 10px;border-radius:999px}
+h1{margin:0;font-size:clamp(26px,4.5vw,38px);line-height:1.1;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+h1 span{color:var(--xl)}
+header p{margin:0;color:var(--muted);max-width:70ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:14px;min-width:0}
+h2{margin:0;font-size:17px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sb{justify-content:space-between}
+.muted{color:var(--muted);font-size:13.5px}
+.note{font-size:12.5px;color:var(--muted);margin:0}
+button,.btn{font:600 14.5px var(--f);border-radius:8px;padding:10px 16px;cursor:pointer;border:1.5px solid var(--xl);background:var(--xl);color:var(--xl-ink);display:inline-block}
+button.ghost,.btn.ghost{background:transparent;color:var(--xl)}
+button.sm{padding:6px 12px;font-size:13.5px}
+button:focus-visible,.btn:focus-within,input:focus-visible,select:focus-visible{outline:3px solid var(--xl);outline-offset:2px}
+.big{font-size:16px;padding:13px 22px}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:20px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between;background:var(--bg)}
+.drop.over{border-color:var(--xl);background:var(--xl-soft)}
+.drop strong{display:block;font-size:16px}
+.filebtn input{position:absolute;width:1px;height:1px;opacity:0}
+.files{display:grid;gap:8px}
+.file{border:1px solid var(--line);border-radius:10px;background:var(--bg);overflow:hidden}
+.file summary{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:14px}
+.file summary b{overflow-wrap:anywhere}
+.tag{font:700 12px var(--f);padding:2px 9px;border-radius:999px;background:var(--xl-soft);color:var(--xl);white-space:nowrap}
+.tag.x{background:var(--loi);color:var(--loi-ink)}
+.cfg{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.cfg div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);display:grid;gap:6px}
+.cfg b{font-size:14px}
+.cfg label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.cfg input{width:70px;font:600 14px var(--f);padding:4px 6px;border:1.5px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);text-align:right}
+.cfg .f{font:500 12px var(--mono);color:var(--xl)}
+select,input[type=search]{font:14px var(--f);padding:7px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
+.tong{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.tong div{border-radius:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--line)}
+.tong b{display:block;font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
+.tong .o b{color:var(--xl)} .tong .l b{color:var(--loi-ink)} .tong .s b{color:var(--sua-ink)}
+.van{display:grid;gap:8px}
+.vd{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;align-items:start;background:var(--bg);border:1px solid var(--line);border-left:5px solid var(--sua-ink);border-radius:8px;padding:9px 12px;cursor:pointer;font-size:14px}
+.vd.loi{border-left-color:var(--loi-ink)}
+.vd code{grid-row:span 2;font:600 12.5px var(--mono);background:var(--xl-soft);color:var(--xl);padding:3px 7px;border-radius:4px;white-space:nowrap}
+.vd span{color:var(--muted);font-size:13px}
+.loc{display:flex;gap:6px;flex-wrap:wrap}
+.loc button{padding:6px 12px;font-size:13.5px}
+.grid{overflow:auto;max-height:600px;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums;min-width:100%}
+th{position:sticky;top:0;background:var(--bg);color:var(--muted);font:600 12px var(--f);border:1px solid var(--line);padding:6px 9px;text-align:left;z-index:1;white-space:nowrap}
+th.nhom{text-align:center;color:var(--ink)}
+td{border:1px solid var(--line);padding:5px 9px;white-space:nowrap;background:var(--surface)}
+td.n{text-align:right} td.q{text-align:right;font-weight:700;color:var(--xl)}
+td.g{text-align:right;color:var(--muted);font-size:12.5px}
+td.loi{background:var(--loi);color:var(--loi-ink);font-weight:700}
+td.sua{background:var(--sua);color:var(--sua-ink)}
+td.ok{color:var(--xl);font-weight:700} td.ko{color:var(--loi-ink);font-weight:700}
+tr.flash td{animation:flash 1.4s ease 2} @keyframes flash{50%{background:var(--xl-soft)}}
+.raw td,.raw th{font-size:12.5px}
+.raw{max-height:260px;margin:0 14px 14px}
+footer{font-size:12.5px;color:var(--muted);text-align:center}
+@media (prefers-reduced-motion:reduce){tr.flash td{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="badge">Bản demo cho trung tâm đào tạo lái xe</span>
+    <h1>Bảng điểm sát hạch <span>trong vài giây</span></h1>
+    <p>Thả file điểm lý thuyết xuất từ máy (hạng B, hạng C1) và file điểm sa hình vào. Trang tự ghép điểm từng học viên theo mã, quy đổi về thang 10, báo ngay ai thiếu điểm, điểm nào sai khung, rồi xuất bảng điểm Excel.</p>
+  </header>
+
+  <section class="card">
+    <div class="drop" id="drop">
+      <div><strong>Thả các file điểm vào đây</strong><span class="muted">.xlsx · .xls · .csv · chọn nhiều file một lúc, máy tự nhận file nào là lý thuyết, file nào là sa hình</span></div>
+      <div class="row"><label class="btn ghost filebtn">Chọn file<input type="file" id="file" accept=".xlsx,.xls,.csv" multiple></label>
+        <button class="big" id="mau" type="button">Chạy thử kỳ thi mẫu 200 học viên</button></div>
+    </div>
+    <div class="files" id="files"></div>
+  </section>
+
+  <section class="card" id="cauHinh">
+    <div class="row sb"><h2>Cách quy đổi về thang 10</h2><span class="muted">Sửa theo đúng cách bên anh đang tính, bảng điểm tự cập nhật</span></div>
+    <div class="cfg" id="cfg"></div>
+    <div class="row"><label class="muted" for="lamTron">Làm tròn</label>
+      <select id="lamTron"><option value="0.1">1 chữ số thập phân (8,7)</option><option value="0.01">2 chữ số (8,67)</option><option value="0.25">Đến 0,25</option><option value="0.5">Đến 0,5</option></select>
+      <label class="muted"><input type="checkbox" id="coTB" checked> Thêm cột điểm trung bình</label></div>
+  </section>
+
+  <section class="card" id="kq" hidden>
+    <div class="row sb"><h2>Bảng điểm</h2><div class="row"><button class="ghost" id="taiMau" type="button">Tải 3 file mẫu</button><button id="tai" type="button">Tải bảng điểm (.xlsx)</button></div></div>
+    <div class="tong" id="tong"></div>
+    <div class="van" id="van"></div>
+    <div class="row sb">
+      <div class="loc" id="loc"></div>
+      <input type="search" id="tim" placeholder="Tìm tên hoặc mã học viên…" aria-label="Tìm học viên">
+    </div>
+    <div class="grid" id="bang"></div>
+    <p class="note">Số nhỏ màu xám là điểm gốc, số xanh đậm là điểm đã quy đổi. Bấm vào một dòng ở mục "Cần xem lại" để nhảy tới học viên đó.</p>
+  </section>
+
+  <footer>Chạy ngay trong trình duyệt, file không gửi đi đâu · Bản demo dùng dữ liệu học viên giả</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+  const boDau = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
+  const rong = v => v === null || v === undefined || String(v).trim() === "";
+  const so = v => { if (typeof v === "number") return v; if (rong(v)) return null; const n = +String(v).replace(",", "."); return isNaN(n) ? null : n; };
+  const sv = n => n === null || n === undefined ? "" : (+n).toLocaleString("vi-VN", {maximumFractionDigits: 2});
+
+  // ---------- phần thi: khung điểm, điểm đạt, quy đổi = điểm ÷ tối đa × 10 ----------
+  const PHAN = [
+    {k: "ltB", ten: "Lý thuyết hạng B", min: 0, max: 30, dat: 27},
+    {k: "ltC1", ten: "Lý thuyết hạng C1", min: 0, max: 35, dat: 32},
+    {k: "hinh", ten: "Sa hình · Hình", min: 80, max: 100, dat: 80},
+    {k: "chi", ten: "Sa hình · Chi", min: 0, max: 10, dat: ""},
+    {k: "duong", ten: "Sa hình · Đường", min: 80, max: 100, dat: 80},
+  ];
+  $("#cfg").innerHTML = PHAN.map(p => `<div><b>${p.ten}</b>
+    <label for="mx_${p.k}">Điểm tối đa <input id="mx_${p.k}" type="number" value="${p.max}" inputmode="decimal"></label>
+    <label for="dt_${p.k}">Điểm đạt từ <input id="dt_${p.k}" type="number" value="${p.dat}" placeholder="—" inputmode="decimal"></label>
+    <span class="f" id="ct_${p.k}"></span></div>`).join("");
+  const cfg = () => Object.fromEntries(PHAN.map(p => [p.k, {max: +$("#mx_" + p.k).value || p.max, dat: so($("#dt_" + p.k).value), min: p.min}]));
+  const quyDoi = (d, c) => { const b = +$("#lamTron").value; return Math.round(d / c.max * 10 / b) * b; };
+
+  // ---------- dữ liệu mẫu: 200 học viên, vài lỗi hay gặp cài sẵn ----------
+  function duLieuMau() {
+    let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647, chon = a => a[Math.floor(r() * a.length)];
+    const ho = ["Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Vũ", "Đặng", "Bùi", "Đỗ", "Hồ", "Ngô", "Dương", "Lý", "Phan", "Trương"];
+    const demNam = ["Văn", "Đức", "Minh", "Quốc", "Hữu", "Thanh", "Công", "Xuân", "Ngọc", "Tuấn"], demNu = ["Thị", "Thu", "Ngọc", "Thanh", "Minh", "Hồng", "Kim"];
+    const tenNam = ["Hùng", "Dũng", "Nam", "Long", "Tuấn", "Phúc", "Khang", "Bảo", "Hiếu", "Thắng", "Quân", "Đạt", "Sơn", "Trung", "Huy", "Việt"];
+    const tenNu = ["Lan", "Hương", "Mai", "Linh", "Trang", "Hà", "Ngân", "Thảo", "Yến", "Vy", "Hằng", "Nhung"];
+    const hv = [];
+    for (let i = 1; i <= 200; i++) {
+      const nu = r() < .3, ten = `${chon(ho)} ${chon(nu ? demNu : demNam)} ${chon(nu ? tenNu : tenNam)}`;
+      const ns = `${String(1 + Math.floor(r() * 28)).padStart(2, "0")}/${String(1 + Math.floor(r() * 12)).padStart(2, "0")}/${1975 + Math.floor(r() * 30)}`;
+      const hang = i <= 140 ? "B" : "C1", mx = hang === "B" ? 30 : 35;
+      const lt = mx - Math.floor(r() ** 3 * 6);
+      const sh = () => r() < .05 ? 68 + Math.floor(r() * 12) : 80 + Math.floor(r() * 21);
+      hv.push({ma: `HV26-${String(i).padStart(4, "0")}`, sbd: String(1000 + i), ten, ns, hang, lt, hinh: sh(), chi: Math.floor(r() * 4) + 7, duong: sh()});
+    }
+    // lỗi cài sẵn
+    hv[17].lt = 32;                 // hạng B mà 32/30
+    hv[150].lt = 36;                // hạng C1 mà 36/35
+    hv[42].hinh = 105;              // sa hình quá 100
+    hv[88].duong = "";              // quên nhập phần Đường
+    const thieuLT = [63, 121], thieuSH = [9, 177];
+    const ltB = [["TRUNG TÂM SÁT HẠCH LÁI XE"], ["KẾT QUẢ SÁT HẠCH LÝ THUYẾT - HẠNG B - KỲ THI NGÀY 28/10/2026"], [],
+      ["STT", "SBD", "Mã học viên", "Họ và tên", "Ngày sinh", "Số câu đúng", "Kết quả"]];
+    const ltC = [["TRUNG TÂM SÁT HẠCH LÁI XE"], ["KẾT QUẢ SÁT HẠCH LÝ THUYẾT - HẠNG C1 - KỲ THI NGÀY 28/10/2026"], [],
+      ["STT", "SBD", "Mã học viên", "Họ và tên", "Ngày sinh", "Số câu đúng", "Kết quả"]];
+    hv.forEach((h, i) => {
+      if (thieuLT.includes(i)) return;
+      const b = h.hang === "B" ? ltB : ltC;
+      b.push([b.length - 3, h.sbd, h.ma, h.ten, h.ns, h.lt, h.lt >= (h.hang === "B" ? 27 : 32) ? "ĐẠT" : "TRƯỢT"]);
+    });
+    const sh = [["Mã HV", "Họ tên", "Hạng", "Hình", "Chi", "Đường"]];
+    hv.forEach((h, i) => {
+      if (thieuSH.includes(i)) return;
+      sh.push([h.ma, i === 30 ? boDau(h.ten).replace(/\b\w/g, c => c.toUpperCase()) : h.ten, h.hang, h.hinh, h.chi, h.duong]);
+    });
+    sh.push([hv[55].ma, hv[55].ten, hv[55].hang, hv[55].hinh, hv[55].chi, hv[55].duong]);   // nhập trùng
+    const buf = (aoa, n) => { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), n); return XLSX.write(wb, {bookType: "xlsx", type: "array"}); };
+    return [{ten: "LyThuyet_HangB_28-10-2026.xlsx", buf: buf(ltB, "Hạng B")}, {ten: "LyThuyet_HangC1_28-10-2026.xlsx", buf: buf(ltC, "Hạng C1")}, {ten: "SaHinh_28-10-2026.xlsx", buf: buf(sh, "Sa hình")}];
+  }
+
+  // ---------- đọc file: tìm dòng tiêu đề, nhận loại file, nhận cột ----------
+  let files = [], mauHienTai = null, loc = "tat", kq = null;
+  function docBang(ws) {
+    const all = XLSX.utils.sheet_to_json(ws, {header: 1, raw: true, defval: ""});
+    let best = 0, diem = -1;
+    for (let i = 0; i < Math.min(12, all.length); i++) {
+      const d = all[i].filter(v => typeof v === "string" && v.trim() && isNaN(+v)).length * 2 + all[i].filter(v => !rong(v)).length - (all[i].filter(v => !rong(v)).length === 1 ? 5 : 0);
+      if (d > diem) { diem = d; best = i; }
+    }
+    return {tren: all.slice(0, best).flat().join(" "), hd: all[best].map(h => boDau(h)), rows: all.slice(best + 1).filter(r => !r.every(rong)), all};
+  }
+  const timCot = (hd, ...mau) => hd.findIndex(h => mau.some(m => m instanceof RegExp ? m.test(h) : h === m));
+  function nhanFile(ten, buf) {
+    const wb = XLSX.read(buf, {type: "array"}), ws = wb.Sheets[wb.SheetNames[0]], b = docBang(ws), hd = b.hd;
+    const c = {ma: timCot(hd, /^ma ?(hv|hoc vien)/, "ma", /^ma /), sbd: timCot(hd, "sbd", /so bao danh/), ten: timCot(hd, /ho (va )?ten/, "ten", /^ho ten/),
+      hang: timCot(hd, /^hang/), lt: timCot(hd, /so cau dung/, /diem ly thuyet/, /^diem$/, /ket qua diem/), hinh: timCot(hd, /^hinh/), chi: timCot(hd, /^chi/), duong: timCot(hd, /^duong/)};
+    if (c.ma < 0) c.ma = c.sbd;
+    let loai = null, hang = null;
+    if (c.hinh >= 0 || c.duong >= 0) loai = "sh";
+    else if (c.lt >= 0) {
+      loai = "lt";
+      const nguon = boDau(b.tren + " " + ten + " " + wb.SheetNames[0]);
+      hang = /c1/.test(nguon) ? "C1" : /hang ?b|\bb\b|_b|hangb/.test(nguon) ? "B" : null;
+      if (!hang && c.hang < 0) { const m = Math.max(...b.rows.map(r => so(r[c.lt]) || 0)); hang = m > 30 ? "C1" : "B"; }
+    }
+    return {ten, buf, loai, hang, c, rows: b.rows, all: b.all, hdGoc: b.all[b.all.length - b.rows.length - 1] || []};
+  }
+
+  async function them(fs) {
+    for (const f of fs) {
+      try { const buf = f.buf || new Uint8Array(await f.arrayBuffer()); files.push(nhanFile(f.name || f.ten, buf)); }
+      catch (e) { files.push({ten: f.name || f.ten, loai: null, loi: e.message}); }
+    }
+    chay();
+  }
+
+  // ---------- ghép, quy đổi, soát ----------
+  function chay() {
+    veFiles();
+    if (!files.some(f => f.loai)) { $("#kq").hidden = true; return; }
+    const t0 = performance.now(), C = cfg();
+    PHAN.forEach(p => { const v = C[p.k].dat ?? Math.round(C[p.k].max * .9); $("#ct_" + p.k).textContent = `Ví dụ ${sv(v)} điểm → ${sv(quyDoi(v, C[p.k]))}`; });
+    const hv = new Map(), van = [];
+    const lay = (ma, ten) => { const k = String(ma).trim().toUpperCase(); if (!hv.has(k)) hv.set(k, {ma: String(ma).trim(), ten, hang: "", ghi: [], loi: false}); return hv.get(k); };
+    files.filter(f => f.loai === "lt").forEach(f => f.rows.forEach(r => {
+      const ma = r[f.c.ma]; if (rong(ma)) return;
+      const h = lay(ma, r[f.c.ten]); h.hang = h.hang || (f.c.hang >= 0 ? String(r[f.c.hang]).toUpperCase() : f.hang);
+      if (h.lt !== undefined) h.ghi.push("Có 2 dòng điểm lý thuyết");
+      h.lt = so(r[f.c.lt]); h.sbd = f.c.sbd >= 0 ? r[f.c.sbd] : "";
+    }));
+    files.filter(f => f.loai === "sh").forEach(f => f.rows.forEach(r => {
+      const ma = r[f.c.ma]; if (rong(ma)) return;
+      const h = lay(ma, r[f.c.ten]);
+      if (h.coSH) { h.ghi.push("Sa hình bị nhập trùng 2 dòng"); h.loi = true; }
+      h.coSH = true; if (!h.hang && f.c.hang >= 0) h.hang = String(r[f.c.hang]).toUpperCase();
+      ["hinh", "chi", "duong"].forEach(k => { h[k] = f.c[k] >= 0 ? so(r[f.c[k]]) : null; });
+      if (h.ten && r[f.c.ten] && boDau(h.ten) === boDau(r[f.c.ten]) && h.ten !== r[f.c.ten]) h.ghi.push(`Tên ở file sa hình viết khác: "${r[f.c.ten]}"`);
+      else if (h.ten && r[f.c.ten] && boDau(h.ten) !== boDau(r[f.c.ten])) { h.ghi.push(`Tên khác nhau giữa 2 file: "${r[f.c.ten]}"`); h.loi = true; }
+    }));
+    const coLT = files.some(f => f.loai === "lt"), coSH = files.some(f => f.loai === "sh");
+    const ds = [...hv.values()].sort((a, b) => a.ma.localeCompare(b.ma));
+    ds.forEach(h => {
+      const kLT = h.hang === "C1" ? "ltC1" : "ltB", c = C[kLT];
+      h.q = {};
+      const kiem = (k, v, cc, tenPhan) => {
+        if (v === null || v === undefined) { h.ghi.push(`Thiếu điểm ${tenPhan}`); h.loi = true; return; }
+        if (v < 0 || v > cc.max) { h.ghi.push(`${tenPhan} ${sv(v)} nằm ngoài khung 0–${cc.max}`); h.loi = true; return; }
+        h.q[k] = quyDoi(v, cc);
+        if (cc.dat !== null && v < cc.dat) h.truot = (h.truot || []).concat(tenPhan);
+      };
+      if (coLT) kiem("lt", h.lt, c, `lý thuyết hạng ${h.hang || "?"}`);
+      if (coSH) { if (!h.coSH) { h.ghi.push("Không có trong file sa hình"); h.loi = true; } else { kiem("hinh", h.hinh, C.hinh, "Hình"); kiem("chi", h.chi, C.chi, "Chi"); kiem("duong", h.duong, C.duong, "Đường"); } }
+      const qs = Object.values(h.q);
+      h.tb = qs.length ? Math.round(qs.reduce((s, x) => s + x, 0) / qs.length * 100) / 100 : null;
+      h.kq = h.loi ? "Cần xem lại" : h.truot ? "Không đạt" : "Đạt";
+      if (h.ghi.length) van.push(h);
+    });
+    kq = {ds, van, ms: performance.now() - t0, coLT, coSH};
+    ve();
+  }
+
+  function veFiles() {
+    const NHAN = {lt: f => `Lý thuyết hạng ${f.hang || "?"} · ${f.rows.length} học viên`, sh: f => `Sa hình · ${f.rows.length} học viên`};
+    $("#files").innerHTML = files.map((f, i) => `<details class="file"><summary><b>📄 ${esc(f.ten)}</b>
+      <span class="row"><span class="tag ${f.loai ? "" : "x"}">${f.loai ? NHAN[f.loai](f) : "Không nhận ra file này" + (f.loi ? ": " + esc(f.loi) : "")}</span><span class="muted">Xem file gốc ▾</span></span></summary>
+      ${f.all ? `<div class="grid raw"><table>${f.all.slice(0, 30).map((r, j) => `<tr><td class="g">${j + 1}</td>${r.map(v => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table></div>` : ""}</details>`).join("")
+      + (files.length ? `<div><button class="ghost sm" id="xoa" type="button">Bỏ hết file</button></div>` : "");
+    const x = $("#xoa"); if (x) x.onclick = () => { files = []; mauHienTai = null; chay(); };
+  }
+
+  function ve() {
+    const {ds, van, ms} = kq, n = k => ds.filter(h => h.kq === k).length;
+    $("#kq").hidden = false;
+    $("#tong").innerHTML = `<div class="o"><b>${ds.length}</b>học viên đã ghép</div><div class="o"><b>${n("Đạt")}</b>đạt</div>
+      <div class="l"><b>${n("Không đạt")}</b>không đạt</div><div class="s"><b>${van.length}</b>cần xem lại</div>
+      <div><b>${ms < 1000 ? sv(Math.max(ms, 1) / 1000).replace(/^0$/, "0,01") : sv(ms / 1000)} giây</b>thời gian xử lý</div>`;
+    $("#van").innerHTML = van.length ? `<h2>Cần xem lại trước khi nộp</h2>` + van.slice(0, 12).map(h => `<div class="vd ${h.loi ? "loi" : ""}" data-ma="${esc(h.ma)}" tabindex="0" role="button"><code>${esc(h.ma)}</code><b>${esc(h.ten)}</b><span>${esc(h.ghi.join(" · "))}</span></div>`).join("")
+      + (van.length > 12 ? `<p class="note">Còn ${van.length - 12} học viên nữa, bấm "Cần xem lại" để xem hết.</p>` : "") : "";
+    $("#van").querySelectorAll(".vd").forEach(e => { const di = () => nhayToi(e.dataset.ma); e.onclick = di; e.onkeydown = ev => ev.key === "Enter" && di(); });
+    const nut = [["tat", `Tất cả (${ds.length})`], ["xem", `Cần xem lại (${van.length})`], ["truot", `Không đạt (${n("Không đạt")})`], ["B", "Hạng B"], ["C1", "Hạng C1"]];
+    $("#loc").innerHTML = nut.map(([k, t]) => `<button type="button" data-loc="${k}" class="${loc === k ? "" : "ghost"}">${t}</button>`).join("");
+    $("#loc").querySelectorAll("button").forEach(b => b.onclick = () => { loc = b.dataset.loc; ve(); });
+    veBang();
+  }
+
+  function veBang() {
+    const {ds, coLT, coSH} = kq, tim = boDau($("#tim").value), tb = $("#coTB").checked;
+    const loai = ds.filter(h => (loc === "tat" || (loc === "xem" && h.ghi.length) || (loc === "truot" && h.kq === "Không đạt") || h.hang === loc)
+      && (!tim || boDau(h.ten).includes(tim) || boDau(h.ma).includes(tim)));
+    const o = (g, q, bad) => bad ? `<td class="loi">${g === null || g === undefined || g === "" ? "trống" : sv(g)}</td>` : `<td class="g">${sv(g)}</td><td class="q">${sv(q)}</td>`;
+    const cot = (g, q, bad) => bad ? o(g, q, true).replace("<td", '<td colspan="2"') : o(g, q);
+    let h = `<table><thead><tr><th rowspan="2">#</th><th rowspan="2">Mã HV</th><th rowspan="2">Họ và tên</th><th rowspan="2">Hạng</th>
+      ${coLT ? `<th class="nhom" colspan="2">Lý thuyết</th>` : ""}${coSH ? `<th class="nhom" colspan="2">Hình</th><th class="nhom" colspan="2">Chi</th><th class="nhom" colspan="2">Đường</th>` : ""}
+      ${tb ? `<th rowspan="2">Điểm TB</th>` : ""}<th rowspan="2">Kết quả</th><th rowspan="2">Ghi chú</th></tr><tr>${"<th>Gốc</th><th>Thang 10</th>".repeat((coLT ? 1 : 0) + (coSH ? 3 : 0))}</tr></thead><tbody>`;
+    loai.forEach((x, i) => {
+      const bad = k => x.q[k] === undefined;
+      h += `<tr data-ma="${esc(x.ma)}"><td class="g">${i + 1}</td><td>${esc(x.ma)}</td><td>${esc(x.ten)}</td><td>${esc(x.hang)}</td>
+        ${coLT ? cot(x.lt, x.q.lt, bad("lt")) : ""}${coSH ? cot(x.hinh, x.q.hinh, bad("hinh")) + cot(x.chi, x.q.chi, bad("chi")) + cot(x.duong, x.q.duong, bad("duong")) : ""}
+        ${tb ? `<td class="q">${sv(x.tb)}</td>` : ""}<td class="${x.kq === "Đạt" ? "ok" : x.kq === "Không đạt" ? "ko" : "sua"}">${x.kq}${x.truot && !x.loi ? ` <span class="muted">(${x.truot.join(", ")})</span>` : ""}</td>
+        <td class="${x.ghi.length ? (x.loi ? "loi" : "sua") : ""}" style="white-space:normal;min-width:220px">${esc(x.ghi.join(" · "))}</td></tr>`;
+    });
+    $("#bang").innerHTML = h + "</tbody></table>" + (loai.length ? "" : `<p class="note" style="padding:14px">Không có học viên nào ở mục này.</p>`);
+  }
+
+  function nhayToi(ma) {
+    loc = "tat"; $("#tim").value = ""; ve();
+    const tr = $(`#bang tr[data-ma="${CSS.escape(ma)}"]`);
+    if (tr) { tr.scrollIntoView({block: "center", behavior: "smooth"}); tr.classList.add("flash"); setTimeout(() => tr.classList.remove("flash"), 3000); }
+  }
+
+  function tai() {
+    if (!kq) return;
+    const {ds, coLT, coSH} = kq, tb = $("#coTB").checked;
+    const hd = ["STT", "Mã học viên", "Họ và tên", "Hạng"].concat(coLT ? ["Lý thuyết (gốc)", "Lý thuyết (thang 10)"] : [], coSH ? ["Hình (gốc)", "Hình (thang 10)", "Chi (gốc)", "Chi (thang 10)", "Đường (gốc)", "Đường (thang 10)"] : [], tb ? ["Điểm trung bình"] : [], ["Kết quả", "Ghi chú"]);
+    const aoa = [["BẢNG ĐIỂM SÁT HẠCH - KỲ THI " + new Date().toLocaleDateString("vi-VN")], [], hd];
+    ds.forEach((x, i) => aoa.push([i + 1, x.ma, x.ten, x.hang].concat(coLT ? [x.lt ?? "", x.q.lt ?? ""] : [], coSH ? [x.hinh ?? "", x.q.hinh ?? "", x.chi ?? "", x.q.chi ?? "", x.duong ?? "", x.q.duong ?? ""] : [], tb ? [x.tb ?? ""] : [], [x.kq, x.ghi.join("; ")])));
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = hd.map(h => ({wch: /Họ và tên/.test(h) ? 26 : /Ghi chú/.test(h) ? 50 : Math.max(9, h.length + 1)}));
+    ws["!merges"] = [{s: {r: 0, c: 0}, e: {r: 0, c: hd.length - 1}}];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Bảng điểm");
+    const v = [["Mã học viên", "Họ và tên", "Hạng", "Vấn đề"], ...kq.van.map(x => [x.ma, x.ten, x.hang, x.ghi.join("; ")])];
+    const ws2 = XLSX.utils.aoa_to_sheet(v); ws2["!cols"] = [{wch: 14}, {wch: 26}, {wch: 7}, {wch: 70}];
+    XLSX.utils.book_append_sheet(wb, ws2, "Cần xem lại");
+    XLSX.writeFile(wb, `Bang-diem-sat-hach_${ds.length}-hoc-vien.xlsx`);
+  }
+  function taiMau() {
+    const m = mauHienTai || duLieuMau();
+    m.forEach((f, i) => setTimeout(() => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([f.buf])); a.download = f.ten; a.click(); }, i * 400));
+  }
+
+  // ---------- sự kiện ----------
+  const drop = $("#drop");
+  ["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => e.dataTransfer.files.length && them([...e.dataTransfer.files]));
+  $("#file").addEventListener("change", e => { if (e.target.files.length) them([...e.target.files]); e.target.value = ""; });
+  $("#mau").addEventListener("click", () => { files = []; loc = "tat"; mauHienTai = duLieuMau(); them(mauHienTai); setTimeout(() => $("#kq").scrollIntoView({behavior: "smooth"}), 50); });
+  $("#cfg").addEventListener("input", () => kq && chay());
+  $("#lamTron").addEventListener("change", () => kq && chay());
+  $("#coTB").addEventListener("change", () => kq && veBang());
+  $("#tim").addEventListener("input", () => kq && veBang());
+  $("#tai").addEventListener("click", tai);
+  $("#taiMau").addEventListener("click", taiMau);
+  PHAN.forEach(p => { const v = p.dat || Math.round(p.max * .9); $("#ct_" + p.k).textContent = `Ví dụ ${sv(v)} điểm → ${sv(Math.round(v / p.max * 100) / 10)}`; });
+  window._diem = {get kq() { return kq; }, duLieuMau, tai};
+})();
+</script>
+</body>
+</html>
