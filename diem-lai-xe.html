@@ -264,7 +264,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
       if (coLT) kiem("lt", h.lt, c, `lý thuyết hạng ${h.hang || "?"}`);
       if (coSH) { if (!h.coSH) { h.ghi.push("Không có trong file sa hình"); h.loi = true; } else { kiem("hinh", h.hinh, C.hinh, "Hình"); kiem("chi", h.chi, C.chi, "Chi"); kiem("duong", h.duong, C.duong, "Đường"); } }
       const qs = Object.values(h.q);
-      h.tb = qs.length ? Math.round(qs.reduce((s, x) => s + x, 0) / qs.length * 100) / 100 : null;
+      h.tb = !h.loi && qs.length ? Math.round(qs.reduce((s, x) => s + x, 0) / qs.length * 100) / 100 : null;
       h.kq = h.loi ? "Cần xem lại" : h.truot ? "Không đạt" : "Đạt";
       if (h.ghi.length) van.push(h);
     });
@@ -276,7 +276,7 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
     const NHAN = {lt: f => `Lý thuyết hạng ${f.hang || "?"} · ${f.rows.length} học viên`, sh: f => `Sa hình · ${f.rows.length} học viên`};
     $("#files").innerHTML = files.map((f, i) => `<details class="file"><summary><b>📄 ${esc(f.ten)}</b>
       <span class="row"><span class="tag ${f.loai ? "" : "x"}">${f.loai ? NHAN[f.loai](f) : "Không nhận ra file này" + (f.loi ? ": " + esc(f.loi) : "")}</span><span class="muted">Xem file gốc ▾</span></span></summary>
-      ${f.all ? `<div class="grid raw"><table>${f.all.slice(0, 30).map((r, j) => `<tr><td class="g">${j + 1}</td>${r.map(v => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table></div>` : ""}</details>`).join("")
+      ${f.all ? `<div class="grid raw"><table>${f.all.slice(0, 30).map((r, j) => { const n = Math.max(...f.all.map(x => x.length)), day = r.filter(v => !rong(v)); return `<tr><td class="g">${j + 1}</td>${day.length <= 1 ? `<td colspan="${n}">${esc(day[0] ?? "")}</td>` : r.map(v => `<td>${esc(v)}</td>`).join("")}</tr>`; }).join("")}</table></div>` : ""}</details>`).join("")
       + (files.length ? `<div><button class="ghost sm" id="xoa" type="button">Bỏ hết file</button></div>` : "");
     const x = $("#xoa"); if (x) x.onclick = () => { files = []; mauHienTai = null; chay(); };
   }
