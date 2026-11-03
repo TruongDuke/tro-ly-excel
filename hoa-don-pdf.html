@@ -383,14 +383,19 @@ footer{font-size:12.5px;color:var(--muted);text-align:center}
   const drop = $("#drop");
   ["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
   ["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
-  drop.addEventListener("drop", e => e.dataTransfer.files.length && them([...e.dataTransfer.files]));
-  $("#file").addEventListener("change", e => { if (e.target.files.length) them([...e.target.files]); e.target.value = ""; });
-  $("#mau").addEventListener("click", async () => {
+  drop.addEventListener("drop", e => e.dataTransfer.files.length && themCho([...e.dataTransfer.files]));
+  $("#file").addEventListener("change", e => { if (e.target.files.length) themCho([...e.target.files]); e.target.value = ""; });
+  $("#mau").addEventListener("click", async e => {
+    const nut = e.currentTarget, chu = nut.textContent;
+    nut.disabled = true; nut.textContent = "Đang đọc hoá đơn…";
     hds = []; so = null; dangXem = -1;
-    const pdfs = await Promise.all(MAU_PDF.map(async t => ({ten: t, buf: new Uint8Array(await (await fetch("mau-pdf/" + encodeURIComponent(t))).arrayBuffer())})));
-    await them([soMau(), ...pdfs]);
-    $("#kq").scrollIntoView({behavior: "smooth"});
+    try {
+      const pdfs = await Promise.all(MAU_PDF.map(async t => ({ten: t, buf: new Uint8Array(await (await fetch("mau-pdf/" + encodeURIComponent(t))).arrayBuffer())})));
+      await them([soMau(), ...pdfs]);
+      $("#kq").scrollIntoView({behavior: "smooth"});
+    } finally { nut.disabled = false; nut.textContent = chu; }
   });
+  async function themCho(fs) { const d = $(".drop strong"), chu = d.textContent; d.textContent = "Đang đọc hoá đơn…"; try { await them(fs); } finally { d.textContent = chu; } }
   $("#tai").addEventListener("click", tai);
   $("#taiSo").addEventListener("click", taiSo);
   window._hdPdf = {get kq() { return kq; }, get hds() { return hds; }, tai, taiSo, them};
