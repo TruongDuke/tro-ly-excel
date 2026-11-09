@@ -76,6 +76,8 @@ td input{margin:0}
     <div class="files" id="files"></div>
   </section>
 
+  <section class="card" id="goc" hidden></section>
+
   <section class="card" id="kq" hidden>
     <div class="row sb"><h2 id="tieuDe">3. Biên bản</h2><div class="row"><button class="ghost" id="inPdf" type="button">In / Lưu PDF</button><button id="taiWord" type="button">Tải Word</button></div></div>
     <div class="opts"><label><input type="checkbox" id="bo0" checked> Bỏ đối tượng số dư bằng 0</label><label><input type="checkbox" id="chonHet" checked> Chọn tất cả</label></div>
@@ -89,6 +91,7 @@ td input{margin:0}
 <div id="in"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="ke-toan.js?v=202611091200"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
 <script>
 (function () {
@@ -320,14 +323,14 @@ td input{margin:0}
   }
 
   const drop = $("#drop"), inp = $("#file");
-  inp.addEventListener("change", e => { if (e.target.files.length) chay(e.target.files[0]); e.target.value = ""; });
+  inp.addEventListener("change", e => { $("#goc").hidden = true; if (e.target.files.length) chay(e.target.files[0]); e.target.value = ""; });
   ["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
   ["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
-  drop.addEventListener("drop", e => e.dataTransfer.files.length && chay(e.dataTransfer.files[0]));
+  drop.addEventListener("drop", e => e.dataTransfer.files.length && ($("#goc").hidden = true, true) && chay(e.dataTransfer.files[0]));
   $("#mau").addEventListener("click", () => {
     const mau = {tenA: "CÔNG TY TNHH MẪU ABC", dcA: "Số 1 Phố Mẫu, Cầu Giấy, Hà Nội", mstA: "0100000000", ddA: "Nguyễn Văn A", diaDanh: "Hà Nội", tu: "2026-01-01", den: "2026-12-31", loai: "131"};
     Object.entries(mau).forEach(([k, v]) => { if (!$("#" + k).value || k === "loai" || k === "tu" || k === "den") $("#" + k).value = v; });
-    chay(fileMau());
+    const f = fileMau(); window.KT.xemMau($("#goc"), [f], "bảng tổng hợp công nợ 131, 2 dòng tiêu đề, so với các biên bản bên dưới"); chay(f).then(() => $("#goc").scrollIntoView({behavior: "smooth", block: "start"}));
   });
   window.__bbcn = {chay, fileMau, bangChu, taiWord, DS: () => DS, html: x => html(x, A())};
 })();

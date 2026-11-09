@@ -44,6 +44,8 @@ td.ben{font-weight:600}
     </details>
   </section>
 
+  <section class="card" id="goc" hidden></section>
+
   <section class="card" id="kq" hidden>
     <div class="row sb"><h2>Kết quả đối chiếu</h2><button id="tai" type="button">Tải kết quả (.xlsx)</button></div>
     <div class="tong" id="tong"></div>
@@ -56,6 +58,7 @@ td.ben{font-weight:600}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="ke-toan.js?v=202611091200"></script>
 <script>
 (function () {
   "use strict";
@@ -251,11 +254,11 @@ td.ben{font-weight:600}
   }
 
   const drop = $("#drop"), inp = $("#file");
-  inp.addEventListener("change", e => { if (e.target.files.length) chay([...e.target.files]); e.target.value = ""; });
+  inp.addEventListener("change", e => { $("#goc").hidden = true; if (e.target.files.length) chay([...e.target.files]); e.target.value = ""; });
   ["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
   ["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
-  drop.addEventListener("drop", e => e.dataTransfer.files.length && chay([...e.dataTransfer.files]));
-  $("#mau").addEventListener("click", () => chay(fileMau()));
+  drop.addEventListener("drop", e => e.dataTransfer.files.length && ($("#goc").hidden = true, true) && chay([...e.dataTransfer.files]));
+  $("#mau").addEventListener("click", () => { const f = fileMau(); window.KT.xemMau($("#goc"), f, "1 file sao kê kiểu ngân hàng + 1 file sổ tiền gửi 112, so với kết quả đối chiếu bên dưới"); chay(f).then(() => $("#goc").scrollIntoView({behavior: "smooth", block: "start"})); });
   $("#tai").addEventListener("click", tai);
   $("#lech").addEventListener("change", () => { if (NH.length && SO.length) { KQ = ghep(NH, SO, +$("#lech").value || 0); ve(); } });
   window.__dcnh = {chay, fileMau, KQ: () => KQ};
