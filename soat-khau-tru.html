@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Soát khấu trừ thuế GTGT</title>
+<meta name="description" content="Thả file hoá đơn mua vào tải từ cổng thuế, trang đánh dấu hoá đơn có nguy cơ không được khấu trừ thuế GTGT đầu vào.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="ke-toan.css?v=202611091100">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="top"><span class="badge">Công cụ cho kế toán</span><a href="ke-toan.html">← Bộ công cụ kế toán</a></div>
+    <h1>Soát hoá đơn đầu vào <span>có nguy cơ không được khấu trừ thuế</span></h1>
+    <p>Thả file hoá đơn mua vào tải từ cổng hoá đơn điện tử (file <b>Chi tiết</b> hoặc <b>Tổng quan</b>). Trang đánh dấu hoá đơn từ 5 triệu trả tiền mặt, hoá đơn đã bị thay thế hay điều chỉnh, hoá đơn trùng, tiền thuế lệch thuế suất, và cùng người bán cùng ngày mà tổng từ 5 triệu. Thả thêm sổ nhật ký hoặc sổ quỹ (nếu có) để biết hoá đơn nào thực tế trả bằng TK 111.</p>
+  </header>
+
+  <section class="card">
+    <div class="drop" id="drop">
+      <div><strong>Thả file hoá đơn mua vào (.xlsx) vào đây</strong><span class="muted">Tải ở hoadondientu.gdt.gov.vn → Tra cứu hoá đơn → Mua vào → Xuất Excel (Chi tiết có hình thức thanh toán và thuế suất từng dòng) · Thả kèm sổ nhật ký/sổ quỹ nếu có</span></div>
+      <div class="row"><label class="btn ghost filebtn">Chọn file<input type="file" id="file" accept=".xlsx,.xls" multiple></label>
+        <button class="big" id="mau" type="button">Chạy thử với file mẫu</button></div>
+    </div>
+    <div class="files" id="files"></div>
+    <details>
+      <summary>Trang kiểm những gì?</summary>
+      <ul>
+        <li><span class="tag do">Đỏ</span> Hoá đơn tổng thanh toán <b>từ 5 triệu</b> mà hình thức thanh toán ghi <b>tiền mặt</b>, hoặc sổ ghi trả bằng <b>TK 111</b>.</li>
+        <li><span class="tag do">Đỏ</span> Hoá đơn <b>đã bị thay thế</b> hoặc <b>đã huỷ</b> mà vẫn nằm trong danh sách.</li>
+        <li><span class="tag do">Đỏ</span> Hoá đơn <b>trùng</b> (cùng MST người bán, ký hiệu, số).</li>
+        <li><span class="tag vang">Vàng</span> Từ 5 triệu, hình thức ghi <b>TM/CK</b> hoặc để trống: cần có chứng từ chuyển khoản kèm theo.</li>
+        <li><span class="tag vang">Vàng</span> Hoá đơn <b>đã bị điều chỉnh</b>: nhớ lấy cả hoá đơn điều chỉnh khi kê khai.</li>
+        <li><span class="tag vang">Vàng</span> <b>Tiền thuế lệch</b> so với thuế suất × tiền chưa thuế (lệch quá 1.000đ).</li>
+        <li><span class="tag vang">Vàng</span> <b>Cùng người bán, cùng ngày</b>, mỗi tờ dưới 5 triệu nhưng cộng lại từ 5 triệu.</li>
+      </ul>
+      <p class="note" style="margin-top:8px">Hình thức thanh toán trên hoá đơn không phải là cách trả tiền thật. Trang chỉ khoanh vùng hoá đơn cần kiểm, không kết luận thay kế toán. Ngưỡng 5 triệu theo Luật Thuế GTGT số 48/2024/QH15 (giá đã có thuế, áp dụng từ 01/07/2025).</p>
+    </details>
+  </section>
+
+  <section class="card" id="kq" hidden>
+    <div class="row sb"><h2 id="tieuDe">Kết quả soát</h2><button id="tai" type="button">Tải kết quả (.xlsx)</button></div>
+    <div class="tong" id="tong"></div>
+    <div class="ly" id="ly"></div>
+    <div class="row sb"><div class="loc" id="loc"></div><span class="muted" id="dem"></span></div>
+    <div class="grid" id="bang"></div>
+  </section>
+
+  <footer>Chạy ngay trong trình duyệt, file không gửi đi đâu · File mẫu dùng hoá đơn và người bán giả</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  const NGUONG = 5000000;
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+  const boDau = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
+  const khoa = s => boDau(s).replace(/[^a-z0-9]/g, "");
+  const rong = v => v === null || v === undefined || String(v).trim() === "";
+  const sv = n => n === null || n === undefined || n === "" ? "" : Math.round(+n).toLocaleString("vi-VN");
+  const so = v => { if (typeof v === "number") return v; if (rong(v)) return 0; const t = String(v).trim().replace(/\s/g, "");
+    if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) return +t.replace(/\./g, "").replace(",", "."); const n = +t.replace(/,/g, ""); return isNaN(n) ? 0 : n; };
+  const ngay = v => { if (v instanceof Date && !isNaN(v)) return new Date(v.getFullYear(), v.getMonth(), v.getDate());
+    const m = String(v || "").match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/); return m ? new Date(+m[3], m[2] - 1, +m[1]) : null; };
+  const ngayVN = d => d ? `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}` : "";
+  const soHd = v => String(v ?? "").replace(/\D/g, "").replace(/^0+/, "") || String(v ?? "").trim();
+
+  // ---------- đọc bảng: tìm dòng tiêu đề trong 15 dòng đầu theo tên cột ----------
+  function bang(ws) {
+    const all = XLSX.utils.sheet_to_json(ws, {header: 1, raw: true, defval: ""});
+    for (let i = 0; i < Math.min(15, all.length); i++) {
+      const k = all[i].map(khoa);
+      if (k.some(x => x.startsWith("sohoadon") || x === "hoadonso" || x === "sohd")) return {hd: all[i].map(x => String(x).trim()), k, rows: all.slice(i + 1).filter(r => r.some(x => !rong(x)))};
+    }
+    return null;
+  }
+  const tim = (k, ...ten) => { for (const t of ten) { const j = k.findIndex(x => x === t || x.startsWith(t)); if (j >= 0) return j; } return -1; };
+
+  // file cổng thuế: có cột MST người bán + số hoá đơn + tổng tiền thanh toán
+  function laCongThue(b) { return b && tim(b.k, "mstnguoiban") >= 0 && tim(b.k, "tongtienthanhtoan") >= 0; }
+
+  function docCongThue(b) {
+    const k = b.k, c = {
+      mau: tim(k, "kyhieumauso", "mausohd", "mausohoadon"), kh: tim(k, "kyhieuhoadon"), so: tim(k, "sohoadon"), ngay: tim(k, "ngaylaphoadon", "ngaylap"),
+      mst: tim(k, "mstnguoiban"), ten: tim(k, "tennguoiban"), ts: tim(k, "thuesuat"), tien: tim(k, "thanhtienchuathue", "tongtienchuathue"),
+      thue: tim(k, "tienthue", "tongtienthue"), tong: tim(k, "tongtienthanhtoan"), tt: tim(k, "trangthaihoadon"), kq: tim(k, "ketquakiemtra"),
+      httt: tim(k, "hinhthucthanhtoan"), mh: tim(k, "tenhanghoa"), tc: tim(k, "tinhchat"), tg: tim(k, "tygia")};
+    const chiTiet = c.ts >= 0 && c.mh >= 0;
+    const map = new Map(), ds = [];
+    b.rows.forEach((r, i) => {
+      if (rong(r[c.so]) || rong(r[c.mst])) return;
+      const key = [String(r[c.mst]).trim(), String(r[c.kh]).trim(), soHd(r[c.so])].join("|");
+      let h = map.get(key);
+      // file Chi tiết: mỗi dòng hàng 1 dòng, gom lại theo hoá đơn (dòng đầu tiên của mỗi lần gặp liên tiếp)
+      const lienTiep = chiTiet && h && h._cuoi === i - 1;
+      if (!lienTiep) {
+        h = {dong: i + 1, mau: r[c.mau], kh: String(r[c.kh] ?? "").trim(), so: String(r[c.so] ?? "").trim(), ngay: ngay(r[c.ngay]), mst: String(r[c.mst]).trim(),
+          ten: String(r[c.ten] ?? "").trim(), tien: 0, thue: 0, tong: so(r[c.tong]) * (so(r[c.tg]) || 1), tt: String(r[c.tt] ?? "").trim(), kq: String(r[c.kq] ?? "").trim(),
+          httt: c.httt >= 0 ? String(r[c.httt] ?? "").trim() : null, mh: [], lechThue: 0, key};
+        ds.push(h);
+        if (!map.has(key)) map.set(key, h); else h.trungVoi = map.get(key);
+      }
+      h._cuoi = i;
+      const tg = so(r[c.tg]) || 1, tien = so(r[c.tien]) * tg, thue = so(r[c.thue]) * tg;
+      const tinhChat = c.tc >= 0 ? boDau(r[c.tc]) : "";
+      if (chiTiet) {
+        if (!/ghi chu|dien giai/.test(tinhChat)) {
+          const dau = /chiet khau/.test(tinhChat) ? -1 : 1;     // dòng chiết khấu trừ đi
+          h.tien += dau * Math.abs(tien); h.thue += dau * Math.abs(thue);
+          const ts = String(r[c.ts] ?? "").replace("%", "").trim();
+          if (/^\d+(\.\d+)?$/.test(ts) && Math.abs(tien) > 0) h.lechThue += Math.abs(thue) - Math.round(Math.abs(tien) * +ts / 100);
+        }
+        if (!rong(r[c.mh]) && h.mh.length < 3) h.mh.push(String(r[c.mh]).trim());
+      } else { h.tien = tien; h.thue = thue; }
+    });
+    return {ds, chiTiet};
+  }
+
+  // sổ (nhật ký chung, sổ quỹ…): cần cột số hoá đơn + TK có; ngày hoá đơn và MST nếu có thì so khớp chặt hơn
+  function docSo(b) {
+    const k = b.k, c = {so: tim(k, "hoadonso", "sohoadon", "sohd"), co: tim(k, "tkco", "taikhoanco", "tkdu", "taikhoandoiung"), no: tim(k, "tkno", "taikhoanno"),
+      ngay: tim(k, "hoadonngay", "ngayhoadon", "ngayhd"), mst: tim(k, "mst", "masothue")};
+    if (c.so < 0 || c.co < 0) return null;
+    const m = new Map();
+    b.rows.forEach(r => {
+      if (rong(r[c.so])) return;
+      const tk = String(r[c.co] ?? "").trim();
+      const loai = /^111/.test(tk) ? "111" : /^112/.test(tk) ? "112" : null;
+      if (!loai) return;
+      const d = c.ngay >= 0 ? ngay(r[c.ngay]) : null;
+      const key = soHd(r[c.so]) + (d ? "|" + ngayVN(d) : "");
+      if (!m.has(key)) m.set(key, new Set());
+      m.get(key).add(loai);
+    });
+    return {m, coNgay: c.ngay >= 0};
+  }
+
+  // ---------- soát ----------
+  const loaiTT = s => { if (s === null) return "khong"; const b = boDau(s); if (!b) return "trong";
+    const tm = /tien mat|\btm\b|^tm|tm[\/\\]|[\/\\]tm/.test(b), ck = /chuyen khoan|\bck\b|ck[\/\\]|[\/\\]ck|ngan hang|unc/.test(b);
+    return tm && ck ? "tmck" : tm ? "tm" : ck ? "ck" : "khac"; };
+
+  function soat(ds, so_) {
+    // cùng người bán, cùng ngày
+    const nhom = new Map();
+    ds.forEach(h => { if (!h.ngay) return; const k = h.mst + "|" + ngayVN(h.ngay); if (!nhom.has(k)) nhom.set(k, []); nhom.get(k).push(h); });
+    ds.forEach(h => {
+      h.ly = []; h.muc = "ok";
+      const them = (muc, t, nhom = t) => { h.ly.push({muc, t, nhom}); if (muc === "do" || (muc === "vang" && h.muc === "ok")) h.muc = muc; };
+      const tt = boDau(h.tt), lt = loaiTT(h.httt);
+      if (/bi thay the|huy/.test(tt)) them("do", `${h.tt || "Hoá đơn đã huỷ"} → không dùng để khấu trừ`, "Hoá đơn đã bị thay thế / huỷ → không dùng để khấu trừ");
+      else if (/bi dieu chinh/.test(tt)) them("vang", "Hoá đơn đã bị điều chỉnh → kê khai kèm hoá đơn điều chỉnh");
+      if (h.trungVoi) them("do", "Trùng hoá đơn (cùng MST người bán, ký hiệu, số) → chỉ khấu trừ một lần");
+      let soTk = null;
+      if (so_) { const s = so_.m.get(soHd(h.so) + (so_.coNgay && h.ngay ? "|" + ngayVN(h.ngay) : "")); if (s) soTk = s; }
+      if (Math.abs(h.tong) >= NGUONG && !/bi thay the|huy/.test(tt)) {
+        if (soTk && soTk.has("111") && !soTk.has("112")) them("do", "Từ 5 triệu, sổ ghi trả bằng TK 111 (tiền mặt)");
+        else if (soTk && soTk.has("112")) { /* sổ ghi chuyển khoản: ổn */ }
+        else if (lt === "tm") them("do", `Từ 5 triệu, hoá đơn ghi thanh toán tiền mặt ("${h.httt}")`, "Từ 5 triệu, hoá đơn ghi thanh toán tiền mặt");
+        else if (lt === "tmck" || lt === "trong" || lt === "khac") them("vang", `Từ 5 triệu, hình thức "${h.httt || "trống"}" → cần chứng từ chuyển khoản`, "Từ 5 triệu, hình thức ghi TM/CK hoặc để trống → cần chứng từ chuyển khoản");
+        else if (lt === "khong") them("vang", "Từ 5 triệu → cần chứng từ thanh toán không dùng tiền mặt (file Tổng quan không có hình thức thanh toán)");
+      }
+      if (Math.abs(h.lechThue) > 1000) them("vang", `Tiền thuế lệch ${sv(h.lechThue)}đ so với thuế suất × tiền chưa thuế`, "Tiền thuế lệch so với thuế suất × tiền chưa thuế");
+      else if (h.lechThue === 0 && h.tien > 0 && h.thue > 0) {
+        const tl = h.thue / h.tien;
+        if (![0.05, 0.08, 0.1].some(x => Math.abs(tl - x) < 0.002) && ds._tongQuan) them("vang", `Thuế ${(tl * 100).toFixed(1)}% không đúng mức 5/8/10% (có thể nhiều thuế suất)`, "Tỷ lệ thuế không đúng mức 5/8/10% (có thể nhiều thuế suất)");
+      }
+      const g = h.ngay ? nhom.get(h.mst + "|" + ngayVN(h.ngay)) : null;
+      if (g && g.length > 1 && Math.abs(h.tong) < NGUONG) {
+        const cong = g.reduce((a, x) => a + Math.abs(x.tong), 0);
+        if (cong >= NGUONG && g.every(x => Math.abs(x.tong) < NGUONG)) them("vang", `Cùng người bán, cùng ngày có ${g.length} hoá đơn, cộng ${sv(cong)}đ: dễ bị coi là chia nhỏ`, "Cùng người bán, cùng ngày, cộng lại từ 5 triệu: dễ bị coi là chia nhỏ");
+      }
+      if (soTk) h.so_ = [...soTk].join(", ");
+    });
+    return ds;
+  }
+
+  // ---------- giao diện ----------
+  let KQ = [], LOC = "all", TEN = "";
+  function ve() {
+    const n = {do: 0, vang: 0, ok: 0}, t = {do: 0, vang: 0, all: 0};
+    KQ.forEach(h => { n[h.muc]++; t.all += h.thue; if (h.muc !== "ok") t[h.muc] += h.thue; });
+    $("#tong").innerHTML = `<div><small>Hoá đơn</small><b>${KQ.length.toLocaleString("vi-VN")}</b><small>thuế ${sv(t.all)}đ</small></div>
+      <div class="l"><small>Nguy cơ bị loại</small><b>${n.do}</b><small>thuế ${sv(t.do)}đ</small></div>
+      <div class="s"><small>Cần kiểm thêm</small><b>${n.vang}</b><small>thuế ${sv(t.vang)}đ</small></div>
+      <div class="o"><small>Không thấy vấn đề</small><b>${n.ok}</b><small>${KQ.length ? Math.round(n.ok / KQ.length * 100) : 0}%</small></div>`;
+    const ly = new Map();
+    KQ.forEach(h => h.ly.forEach(l => { const k = l.muc + "|" + l.nhom;
+      const v = ly.get(k) || {muc: l.muc, t: l.nhom, n: 0, thue: 0}; v.n++; v.thue += h.thue; ly.set(k, v); }));
+    $("#ly").innerHTML = [...ly.values()].sort((a, b) => (a.muc === "do" ? 0 : 1) - (b.muc === "do" ? 0 : 1) || b.thue - a.thue)
+      .map(v => `<div class="${v.muc}"><span>${esc(v.t)}</span><b>${v.n} HĐ · thuế ${sv(v.thue)}đ</b></div>`).join("");
+    $("#loc").innerHTML = [["all", `Tất cả (${KQ.length})`], ["do", `Đỏ (${n.do})`], ["vang", `Vàng (${n.vang})`], ["ok", `Ổn (${n.ok})`]]
+      .map(([k, t]) => `<button type="button" data-l="${k}" class="${LOC === k ? "" : "ghost"}">${t}</button>`).join("");
+    $("#loc").querySelectorAll("button").forEach(b => b.onclick = () => { LOC = b.dataset.l; ve(); });
+    const ds = KQ.filter(h => LOC === "all" || h.muc === LOC).sort((a, b) => ({do: 0, vang: 1, ok: 2}[a.muc] - {do: 0, vang: 1, ok: 2}[b.muc]) || (a.ngay - b.ngay));
+    $("#dem").textContent = ds.length > 500 ? `Đang hiện 500/${ds.length} hoá đơn, file tải về có đủ` : `${ds.length} hoá đơn`;
+    const tag = {do: '<span class="tag do">Đỏ</span>', vang: '<span class="tag vang">Vàng</span>', ok: '<span class="tag ok">Ổn</span>'};
+    $("#bang").innerHTML = `<table><thead><tr><th>Mức</th><th>Lý do</th><th>Ngày</th><th>Ký hiệu</th><th>Số HĐ</th><th>Người bán</th><th>MST</th><th>Chưa thuế</th><th>Thuế</th><th>Tổng thanh toán</th><th>Hình thức TT</th></tr></thead><tbody>${
+      ds.slice(0, 500).map(h => `<tr class="${h.muc}"><td>${tag[h.muc]}</td><td class="ld">${esc(h.ly.map(l => l.t).join(" · ") || "")}</td><td>${ngayVN(h.ngay)}</td><td>${esc(h.kh)}</td><td>${esc(h.so)}</td><td title="${esc(h.mh.join("; "))}">${esc(h.ten.length > 42 ? h.ten.slice(0, 40) + "…" : h.ten)}</td><td>${esc(h.mst)}</td>
+        <td class="n">${sv(h.tien)}</td><td class="n">${sv(h.thue)}</td><td class="n">${sv(h.tong)}</td><td>${esc(h.httt ?? "")}${h.so_ ? `<br><span class="muted">sổ: TK ${esc(h.so_)}</span>` : ""}</td></tr>`).join("")}</tbody></table>`;
+  }
+
+  function tai() {
+    const ten = {do: "Đỏ – nguy cơ bị loại", vang: "Vàng – cần kiểm", ok: "Ổn"};
+    const aoa = [["Mức", "Lý do", "Ngày lập", "Ký hiệu", "Số HĐ", "MST người bán", "Tên người bán", "Mặt hàng (vài dòng đầu)", "Tiền chưa thuế", "Tiền thuế", "Tổng thanh toán", "Hình thức TT trên HĐ", "Sổ ghi TK", "Trạng thái HĐ"]];
+    [...KQ].sort((a, b) => ({do: 0, vang: 1, ok: 2}[a.muc] - {do: 0, vang: 1, ok: 2}[b.muc]) || (a.ngay - b.ngay)).forEach(h =>
+      aoa.push([ten[h.muc], h.ly.map(l => l.t).join(" · "), h.ngay, h.kh, h.so, h.mst, h.ten, h.mh.join("; "), Math.round(h.tien), Math.round(h.thue), Math.round(h.tong), h.httt ?? "", h.so_ ?? "", h.tt]));
+    const ws = XLSX.utils.aoa_to_sheet(aoa, {cellDates: true});
+    const rg = XLSX.utils.decode_range(ws["!ref"]);
+    for (let r = 1; r <= rg.e.r; r++) { for (const c of [8, 9, 10]) { const o = ws[XLSX.utils.encode_cell({r, c})]; if (o) o.z = "#,##0"; } const d = ws[XLSX.utils.encode_cell({r, c: 2})]; if (d) d.z = "dd/mm/yyyy"; }
+    ws["!cols"] = [18, 60, 11, 10, 9, 14, 40, 40, 14, 13, 15, 18, 10, 20].map(w => ({wch: w}));
+    ws["!autofilter"] = {ref: ws["!ref"]};
+    const th = [["Lý do", "Mức", "Số hoá đơn", "Tiền thuế"]];
+    $("#ly").querySelectorAll("div").forEach(d => { const m = d.querySelector("b").textContent.match(/(\d+) HĐ · thuế ([\d.]+)/); th.push([d.querySelector("span").textContent, d.className === "do" ? "Đỏ" : "Vàng", +m[1], +m[2].replace(/\./g, "")]); });
+    const ws2 = XLSX.utils.aoa_to_sheet(th); ws2["!cols"] = [{wch: 70}, {wch: 8}, {wch: 11}, {wch: 16}];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Kết quả soát"); XLSX.utils.book_append_sheet(wb, ws2, "Tổng hợp lý do");
+    XLSX.writeFile(wb, `Soat-khau-tru-GTGT${TEN ? "_" + TEN.replace(/\.xlsx?$/i, "") : ""}.xlsx`);
+  }
+
+  async function chay(files) {
+    const hd = [], soDs = [], bo = [];
+    for (const f of files) {
+      const wb = XLSX.read(new Uint8Array(await f.arrayBuffer()), {type: "array", cellDates: true});
+      let nhan = false;
+      for (const n of wb.SheetNames) {
+        const b = bang(wb.Sheets[n]);
+        if (laCongThue(b)) { hd.push({ten: f.name, ...docCongThue(b)}); nhan = true; break; }
+        const s = b && docSo(b); if (s && s.m.size) { soDs.push({ten: f.name, ...s}); nhan = true; break; }
+      }
+      if (!nhan) bo.push(f.name);
+    }
+    $("#files").innerHTML = [...hd.map(x => `<span class="pill">🧾 ${esc(x.ten)} · ${x.ds.length} hoá đơn${x.chiTiet ? "" : " · file Tổng quan"}</span>`),
+      ...soDs.map(x => `<span class="pill">📒 ${esc(x.ten)} · sổ</span>`), ...bo.map(n => `<span class="pill" style="color:var(--loi-ink)">✗ ${esc(n)}: không nhận ra (cần file Mua vào của cổng thuế hoặc sổ có cột số hoá đơn + TK có)</span>`)].join("");
+    if (!hd.length) { $("#kq").hidden = true; return; }
+    const ds = hd.flatMap(x => x.ds); ds._tongQuan = hd.some(x => !x.chiTiet);
+    let so_ = null;
+    if (soDs.length) { so_ = {m: new Map(), coNgay: soDs.every(x => x.coNgay)}; soDs.forEach(x => x.m.forEach((v, k) => { const kk = so_.coNgay ? k : k.split("|")[0]; if (!so_.m.has(kk)) so_.m.set(kk, new Set()); v.forEach(t => so_.m.get(kk).add(t)); })); }
+    KQ = soat(ds, so_); LOC = "all"; TEN = hd[0].ten;
+    $("#tieuDe").textContent = `Kết quả soát · ${hd.map(x => x.ten).join(", ")}`;
+    $("#kq").hidden = false; ve();
+    $("#kq").scrollIntoView({behavior: "smooth", block: "start"});
+  }
+
+  // ---------- file mẫu: hoá đơn giả theo đúng cột file Chi tiết của cổng thuế ----------
+  function fileMau() {
+    let s = 7; const rd = () => (s = (s * 16807) % 2147483647) / 2147483647, chon = a => a[Math.floor(rd() * a.length)];
+    const ban = ["CÔNG TY TNHH THƯƠNG MẠI MINH AN", "CÔNG TY CP VẬT TƯ KỸ THUẬT HẢI ĐĂNG", "CÔNG TY TNHH DỊCH VỤ ĂN UỐNG SEN VÀNG", "CÔNG TY TNHH XĂNG DẦU BÌNH MINH",
+      "CÔNG TY CP THIẾT BỊ ĐIỆN PHƯƠNG NAM", "CÔNG TY TNHH VĂN PHÒNG PHẨM KIM LONG", "CÔNG TY TNHH VẬN TẢI TRƯỜNG THỊNH", "CÔNG TY CP XÂY LẮP AN PHÚ",
+      "CÔNG TY TNHH NHÀ HÀNG BIỂN XANH", "CÔNG TY TNHH SẮT THÉP ĐỨC THÀNH", "CÔNG TY CP VIỄN THÔNG SAO MAI", "CÔNG TY TNHH IN ẤN QUANG MINH"]
+      .map((t, i) => ({t, mst: "0109" + String(880000 + i * 731).padStart(6, "0"), an: /ĂN UỐNG|NHÀ HÀNG/.test(t)}));
+    const hang = {an: ["Lẩu hải sản", "Bò nướng", "Nước ngọt", "Bia lon"], kh: ["Thép hộp 40x80", "Dây cáp điện 2x2.5", "Giấy A4", "Mực in", "Dầu DO 0,05S", "Cước vận chuyển", "Ống PPR D25", "Công tắc 3 chiều"]};
+    const hd = [["Mẫu số HD", "Ký hiệu hóa đơn", "Số hóa đơn", "Ngày lập hóa đơn", "Ngày người bán ký số", "MCCQT", "Ngày CQT ký số", "Đơn vị tiền tệ", "Tỷ giá", "Tên người bán", "MST người bán",
+      "Địa chỉ người bán", "Tên người mua", "MST người mua", "Địa chỉ người mua", "Mã VT", "Tên hàng hóa, dịch vụ", "Đơn vị tính", "Số lượng", "Đơn giá", "Chiết khấu", "Thuế suất",
+      "Thành tiền chưa thuế", "Tiền thuế", "Tổng tiền CKTM", "Tổng tiền phí", "Tổng tiền thanh toán", "Trạng thái hóa đơn", "Kết quả kiểm tra hóa đơn", "url tra cứu hóa đơn", "Mã tra cứu",
+      "Ghi chú 1", "Hình thức thanh toán", "Tính chất", "Ghi chú 2", "Số lô", "Hạn dùng"]];
+    const ds = [];
+    const them = (b, ngay, dong, o = {}) => {
+      const so = o.so ?? String(100 + ds.length * 7), kh = o.kh ?? "C26T" + b.mst.slice(-2);
+      const tien = dong.map(d => d.sl * d.dg), thue = dong.map((d, i) => Math.round(tien[i] * d.ts / 100) + (o.lech && i === 0 ? o.lech : 0));
+      const tong = tien.reduce((a, x) => a + x, 0) + thue.reduce((a, x) => a + x, 0);
+      dong.forEach((d, i) => ds.push([1, kh, so, ngayVN(ngay), ngayVN(ngay), "M1-26-" + so, ngayVN(ngay), "VND", "", b.t, b.mst, "Hà Nội", "CÔNG TY TNHH MẪU", "0100000000", "Hà Nội", "", d.mh, d.dvt || "Cái",
+        d.sl, d.dg, 0, d.ts + "%", tien[i], thue[i], 0, "", tong, o.tt || "Hóa đơn mới", "Đã cấp mã hóa đơn", "", "", "", o.httt ?? chon(["Chuyển khoản", "TM/CK", "CK"]), "Hàng hóa, dịch vụ", "", "", ""]));
+      return so;
+    };
+    const d = (m, dd) => new Date(2026, m - 1, dd);
+    for (let i = 0; i < 150; i++) {
+      const b = chon(ban), ng = d(7 + Math.floor(rd() * 3), 1 + Math.floor(rd() * 28)), n = 1 + Math.floor(rd() * 3);
+      const dong = Array.from({length: n}, () => ({mh: chon(b.an ? hang.an : hang.kh), sl: 1 + Math.floor(rd() * 12), dg: Math.round((b.an ? 80 + rd() * 400 : 150 + rd() * 2500)) * 1000, ts: b.an ? 8 : chon([8, 8, 10])}));
+      them(b, ng, dong, {httt: b.an ? chon(["Tiền mặt", "TM/CK", "Tiền mặt/Chuyển khoản"]) : undefined});
+    }
+    // cài sẵn các tình huống
+    const nh = ban[8], vt = ban[1], xd = ban[3];
+    them(nh, d(8, 12), [{mh: "Tiệc tiếp khách", sl: 1, dg: 7200000, ts: 8}], {httt: "Tiền mặt"});
+    them(nh, d(9, 5), [{mh: "Tiệc tiếp khách", sl: 1, dg: 12500000, ts: 8}], {httt: "TM"});
+    them(xd, d(9, 20), [{mh: "Dầu DO 0,05S", sl: 300, dg: 21000, ts: 10, dvt: "Lít"}], {httt: "Tiền mặt"});
+    them(vt, d(7, 15), [{mh: "Dây cáp điện 2x2.5", sl: 100, dg: 95000, ts: 10}], {tt: "Hóa đơn đã bị thay thế", so: "777"});
+    them(vt, d(7, 18), [{mh: "Dây cáp điện 2x2.5", sl: 100, dg: 92000, ts: 10}], {tt: "Hóa đơn thay thế", so: "781"});
+    them(ban[4], d(8, 3), [{mh: "Công tắc 3 chiều", sl: 40, dg: 85000, ts: 8}], {tt: "Hóa đơn đã bị điều chỉnh", so: "1203"});
+    them(ban[9], d(8, 22), [{mh: "Thép hộp 40x80", sl: 50, dg: 310000, ts: 10}], {so: "4521"});
+    them(ban[5], d(9, 9), [{mh: "Mực in", sl: 10, dg: 450000, ts: 10}], {lech: 120000});
+    them(ban[2], d(9, 14), [{mh: "Lẩu hải sản", sl: 6, dg: 550000, ts: 8}], {httt: "Tiền mặt"});
+    them(ban[2], d(9, 14), [{mh: "Bò nướng", sl: 5, dg: 520000, ts: 8}], {httt: "Tiền mặt"});
+    them(ban[6], d(9, 2), [{mh: "Cước vận chuyển", sl: 1, dg: 3200000, ts: 8}], {httt: "Chuyển khoản"});
+    them(ban[9], d(8, 22), [{mh: "Thép hộp 40x80", sl: 50, dg: 310000, ts: 10}], {so: "4521", httt: "Chuyển khoản"});   // tải trùng 2 lần
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hd.concat(ds)), "Sheet1");
+    return new File([XLSX.write(wb, {bookType: "xlsx", type: "array"})], "Mau - Mua vao - Chi tiet.xlsx");
+  }
+
+  // ---------- gắn sự kiện ----------
+  const drop = $("#drop"), inp = $("#file");
+  inp.addEventListener("change", e => { if (e.target.files.length) chay([...e.target.files]); e.target.value = ""; });
+  ["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => e.dataTransfer.files.length && chay([...e.dataTransfer.files]));
+  $("#mau").addEventListener("click", () => chay([fileMau()]));
+  $("#tai").addEventListener("click", tai);
+  window.__soat = {chay, fileMau, KQ: () => KQ};   // để kiểm thử
+})();
+</script>
+</body>
+</html>

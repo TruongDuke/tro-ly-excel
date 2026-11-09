@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Đối chiếu sao kê ngân hàng</title>
+<meta name="description" content="Thả sao kê ngân hàng và sổ tiền gửi (TK 112), trang tự ghép từng giao dịch và chỉ ra khoản lệch hai chiều.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="ke-toan.css?v=202611091100">
+<style>
+.hai{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){.hai{grid-template-columns:1fr}}
+.o{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--bg);display:grid;gap:4px;font-size:14px}
+.o b{font-variant-numeric:tabular-nums}
+label.nho{font-size:13.5px;color:var(--muted);display:flex;gap:8px;align-items:center}
+label.nho input{width:56px;font:600 14px var(--f);padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
+td.ben{font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="top"><span class="badge">Công cụ cho kế toán</span><a href="ke-toan.html">← Bộ công cụ kế toán</a></div>
+    <h1>Đối chiếu sao kê ngân hàng <span>với sổ tiền gửi</span></h1>
+    <p>Thả file sao kê tải từ ngân hàng và sổ tiền gửi (TK 112) xuất từ phần mềm kế toán hoặc Excel. Trang tự ghép từng giao dịch theo chiều tiền, số tiền và ngày, rồi chỉ ra khoản ngân hàng có mà sổ chưa ghi, khoản sổ ghi mà ngân hàng chưa có, và khoản ghi lệch ngày.</p>
+  </header>
+
+  <section class="card">
+    <div class="drop" id="drop">
+      <div><strong>Thả 2 file vào đây: sao kê ngân hàng + sổ tiền gửi (.xlsx, .xls, .csv)</strong><span class="muted">Trang tự nhận file nào là sao kê, file nào là sổ (sổ có cột TK đối ứng, số chứng từ). Sao kê cần cột ngày và số tiền ghi nợ/ghi có (hoặc 1 cột số tiền có dấu).</span></div>
+      <div class="row"><label class="btn ghost filebtn">Chọn file<input type="file" id="file" accept=".xlsx,.xls,.csv" multiple></label>
+        <button class="big" id="mau" type="button">Chạy thử với file mẫu</button></div>
+    </div>
+    <div class="row sb"><div class="files" id="files"></div><label class="nho">Cho lệch ngày tối đa <input type="number" id="lech" value="3" min="0" max="31"> ngày</label></div>
+    <details>
+      <summary>Trang ghép thế nào?</summary>
+      <ul>
+        <li>Tiền <b>vào</b> tài khoản (ngân hàng ghi có) ghép với dòng sổ <b>Nợ 112 / thu</b>; tiền <b>ra</b> (ngân hàng ghi nợ) ghép với <b>Có 112 / chi</b>.</li>
+        <li>Phải <b>đúng số tiền</b>. Nhiều khoản cùng số tiền thì ưu tiên ngày gần nhau nhất.</li>
+        <li><span class="tag ok">Khớp</span> cùng ngày · <span class="tag vang">Lệch ngày</span> khớp tiền nhưng khác ngày (trong số ngày cho phép) · <span class="tag do">Chưa ghép</span> chỉ có ở một bên.</li>
+        <li>Khoản chưa ghép thường là: phí, lãi ngân hàng chưa hạch toán; ghi sổ nhầm số tiền; một lần chuyển gộp nhiều chứng từ; ghi sổ nhầm tài khoản ngân hàng.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="card" id="kq" hidden>
+    <div class="row sb"><h2>Kết quả đối chiếu</h2><button id="tai" type="button">Tải kết quả (.xlsx)</button></div>
+    <div class="tong" id="tong"></div>
+    <div class="hai" id="cong"></div>
+    <div class="row sb"><div class="loc" id="loc"></div><span class="muted" id="dem"></span></div>
+    <div class="grid" id="bang"></div>
+  </section>
+
+  <footer>Chạy ngay trong trình duyệt, file không gửi đi đâu · File mẫu dùng giao dịch giả</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+  const boDau = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
+  const khoa = s => boDau(s).replace(/[^a-z0-9]/g, "");
+  const rong = v => v === null || v === undefined || String(v).trim() === "";
+  const sv = n => n === null || n === undefined || n === "" ? "" : Math.round(+n).toLocaleString("vi-VN");
+  const so = v => { if (typeof v === "number") return v; if (rong(v)) return 0; let t = String(v).trim().replace(/\s|đ|vnd/gi, "");
+    const am = /^\(.*\)$/.test(t); t = t.replace(/[()]/g, "");
+    if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, "").replace(",", "."); else if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)) t = t.replace(/,/g, "");
+    const n = +t; return isNaN(n) ? 0 : am ? -n : n; };
+  const ngay = v => { if (v instanceof Date && !isNaN(v)) return new Date(v.getFullYear(), v.getMonth(), v.getDate());
+    if (typeof v === "number" && v > 30000 && v < 60000) { const d = new Date(Math.round((v - 25569) * 864e5)); return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); }
+    const m = String(v || "").match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/); if (!m) return null;
+    const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]; return new Date(y, m[2] - 1, +m[1]); };
+  const ngayVN = d => d ? `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}` : "";
+  const NGAY = 864e5;
+
+  // ---------- nhận cột theo nhiều cách gọi ----------
+  const TEN = {
+    ngay: ["ngaygiaodich", "ngayhachtoan", "ngaychungtu", "ngayctu", "ngayghiso", "ngayhieuluc", "ngay", "transactiondate", "txndate", "postingdate", "valuedate", "date"],
+    // cột bên Nợ: sao kê "ghi nợ" (tiền ra) · sổ 112 "PS nợ / Thu" (tiền vào); cột bên Có thì ngược lại
+    no: ["sotienghino", "ghino", "psno", "phatsinhno", "tienra", "rutra", "debit", "debitamount", "withdrawal", "sotienrut", "thu", "thuno", "sotienthu", "notkno"],
+    co: ["sotienghico", "ghico", "psco", "phatsinhco", "tienvao", "guivao", "credit", "creditamount", "deposit", "sotiengui", "chi", "chico", "sotienchi"],
+    tien: ["sotien", "amount", "sotiengiaodich"],
+    nd: ["noidung", "diengiai", "noidunggiaodich", "mota", "description", "details", "narrative", "remark", "noidungchitiet"],
+    ct: ["sochungtu", "soct", "sohieu", "soctu", "mathamchieu", "sothamchieu", "reference", "refno", "magiaodich", "sobutoan"],
+    tkdu: ["tkdoiung", "taikhoandoiung", "tkdu", "tkdoi"],
+    tkno: ["tkno", "taikhoanno"], tkco: ["tkco", "taikhoanco"],
+  };
+  const timCot = (k, ds) => { for (const t of ds) { const j = k.findIndex(x => x === t); if (j >= 0) return j; } for (const t of ds) { const j = k.findIndex(x => x.startsWith(t) && t.length >= 4); if (j >= 0) return j; } return -1; };
+
+  // dòng tiêu đề: dòng có cột ngày + (ghi nợ/có hoặc số tiền) trong 30 dòng đầu; gộp 2 dòng tiêu đề kiểu "Số phát sinh" / "Nợ | Có"
+  function bang(ws) {
+    const all = XLSX.utils.sheet_to_json(ws, {header: 1, raw: true, defval: ""});
+    for (let i = 0; i < Math.min(30, all.length); i++) {
+      let k = all[i].map(khoa);
+      const k2 = (all[i + 1] || []).map(khoa);
+      const gop = k.map((x, j) => (k2[j] === "no" || k2[j] === "co" || k2[j] === "thu" || k2[j] === "chi") ? (x || "").replace(/^(sophatsinh|phatsinh|sotien)$/, "") + (k2[j] === "no" ? "psno" : k2[j] === "co" ? "psco" : k2[j]) : x);
+      const thu = (kk, n) => { const c = {}; for (const t in TEN) c[t] = timCot(kk, TEN[t]); return c.ngay >= 0 && ((c.no >= 0 && c.co >= 0) || c.tien >= 0) ? {c, bo: n} : null; };
+      let r = thu(k, 1); if (!r) { // 2 dòng: "Số phát sinh" gộp cột, dòng dưới "Nợ | Có"
+        const cha = []; let cur = ""; all[i].forEach((x, j) => { if (!rong(x)) cur = khoa(x); cha[j] = cur; });
+        const g = k2.map((x, j) => x === "no" || x === "co" || x === "thu" || x === "chi" ? ({no: "psno", co: "psco", thu: "thu", chi: "chi"}[x]) : (k[j] || x));   // eslint-disable-line
+        r = thu(g, 2); if (r) k = g; else { r = thu(gop, 2); if (r) k = gop; }
+      }
+      if (r) return {k, c: r.c, rows: all.slice(i + r.bo).filter(x => x.some(v => !rong(v)))};
+    }
+    return null;
+  }
+
+  function doc(b, ten) {
+    const c = b.c, laSo = c.tkdu >= 0 || c.tkno >= 0 || (c.ct >= 0 && !/sao ?ke|statement|giao dich|transaction/i.test(boDau(ten)) && /so|ledger|112|tgnh|tien gui/i.test(boDau(ten)));
+    const gd = [];
+    b.rows.forEach((r, i) => {
+      const d = ngay(r[c.ngay]); if (!d) return;
+      let vao = 0, ra = 0;
+      if (c.no >= 0 && c.co >= 0) {
+        // sao kê: ghi có = tiền vào, ghi nợ = tiền ra · sổ 112: PS nợ = thu (vào), PS có = chi (ra)
+        const a = Math.abs(so(r[c.no])), b2 = Math.abs(so(r[c.co]));
+        if (laSo) { vao = a; ra = b2; } else { vao = b2; ra = a; }
+      } else { const t = so(r[c.tien]); if (t > 0) vao = t; else ra = -t; }
+      const nd = c.nd >= 0 ? String(r[c.nd] ?? "").trim() : "";
+      if (/so du dau|so du cuoi|cong phat sinh|tong cong|^cong$|chuyen sang|mang sang/.test(boDau(nd)) || /^(cong|tong)/.test(boDau(r[0]))) return;
+      const ct = c.ct >= 0 ? String(r[c.ct] ?? "").trim() : "";
+      if (vao) gd.push({d, tien: Math.round(vao), chieu: "vao", nd, ct, dong: i});
+      if (ra) gd.push({d, tien: Math.round(ra), chieu: "ra", nd, ct, dong: i});
+    });
+    return {laSo, gd};
+  }
+
+  // ---------- ghép ----------
+  function ghep(nh, so_, lech) {
+    nh.forEach(x => { x.ben = null; x.goiY = null; }); so_.forEach(x => { x.ben = null; x.goiY = null; });
+    const theo = new Map();
+    so_.forEach(x => { const k = x.chieu + "|" + x.tien; if (!theo.has(k)) theo.set(k, []); theo.get(k).push(x); });
+    // 2 lượt: cùng ngày trước, rồi lệch ngày gần nhất
+    for (const vong of [0, 1]) {
+      [...nh].sort((a, b) => a.d - b.d).forEach(a => {
+        if (a.ben) return;
+        const ds = (theo.get(a.chieu + "|" + a.tien) || []).filter(x => !x.ben);
+        let tot = null, kc = 1e9;
+        ds.forEach(x => { const k = Math.abs(x.d - a.d) / NGAY; if ((vong === 0 ? k === 0 : k <= lech) && k < kc) { kc = k; tot = x; } });
+        if (tot) { a.ben = tot; tot.ben = a; a.lech = tot.lech = Math.round(kc); }
+      });
+    }
+    // khoản chỉ có ở một bên: gợi ý cặp cùng chiều, gần ngày, số tiền lệch dưới 10% (thường là ghi sổ nhầm số tiền)
+    const conSo = so_.filter(x => !x.ben);
+    nh.filter(a => !a.ben).forEach(a => {
+      let tot = null, kc = 1e18;
+      conSo.forEach(x => { if (x.chieu !== a.chieu || x.goiY || Math.abs(x.d - a.d) / NGAY > Math.max(lech, 3)) return;
+        const l = Math.abs(x.tien - a.tien); if (l <= a.tien * 0.1 && l < kc) { kc = l; tot = x; } });
+      if (tot) { a.goiY = tot; tot.goiY = a; }
+    });
+    const dong = [];
+    nh.forEach(a => dong.push(a.ben ? {loai: a.lech ? "lech" : "khop", nh: a, so: a.ben} : {loai: "nh", nh: a}));
+    so_.filter(x => !x.ben).forEach(x => dong.push({loai: "so", so: x}));
+    dong.forEach(x => x.d = (x.nh || x.so).d);
+    return dong.sort((a, b) => a.d - b.d);
+  }
+
+  // ---------- giao diện ----------
+  let NH = [], SO = [], KQ = [], LOC = "lech", TENF = [];
+  const NHAN = {khop: ["ok", "Khớp"], lech: ["vang", "Lệch ngày"], nh: ["do", "Ngân hàng có, sổ chưa ghi"], so: ["do", "Sổ ghi, ngân hàng chưa có"]};
+  function ve() {
+    const n = {khop: 0, lech: 0, nh: 0, so: 0}, t = {nh: 0, so: 0};
+    KQ.forEach(x => { n[x.loai]++; if (x.loai === "nh") t.nh += (x.nh.chieu === "vao" ? 1 : -1) * x.nh.tien; if (x.loai === "so") t.so += (x.so.chieu === "vao" ? 1 : -1) * x.so.tien; });
+    $("#tong").innerHTML = `<div class="o"><small>Khớp</small><b>${n.khop}</b><small>giao dịch</small></div>
+      <div class="s"><small>Khớp tiền, lệch ngày</small><b>${n.lech}</b><small>kiểm lại ngày hạch toán</small></div>
+      <div class="l"><small>Ngân hàng có, sổ chưa ghi</small><b>${n.nh}</b><small>chênh ${sv(t.nh)}đ</small></div>
+      <div class="l"><small>Sổ ghi, ngân hàng chưa có</small><b>${n.so}</b><small>chênh ${sv(t.so)}đ</small></div>`;
+    const c = ds => ({vao: ds.filter(x => x.chieu === "vao").reduce((a, x) => a + x.tien, 0), ra: ds.filter(x => x.chieu === "ra").reduce((a, x) => a + x.tien, 0), n: ds.length});
+    const a = c(NH), b = c(SO);
+    $("#cong").innerHTML = `<div class="o"><b>🏦 Sao kê ngân hàng · ${a.n} giao dịch</b><span>Tiền vào: <b>${sv(a.vao)}</b> · Tiền ra: <b>${sv(a.ra)}</b></span><span class="muted">Thuần: ${sv(a.vao - a.ra)}đ</span></div>
+      <div class="o"><b>📒 Sổ tiền gửi · ${b.n} dòng</b><span>Thu (Nợ 112): <b>${sv(b.vao)}</b> · Chi (Có 112): <b>${sv(b.ra)}</b></span><span class="muted">Thuần: ${sv(b.vao - b.ra)}đ · lệch với sao kê: <b style="color:${Math.abs((a.vao - a.ra) - (b.vao - b.ra)) > 0 ? "var(--loi-ink)" : "var(--xl)"}">${sv((a.vao - a.ra) - (b.vao - b.ra))}đ</b></span></div>`;
+    $("#loc").innerHTML = [["lech", `Cần xem (${n.nh + n.so + n.lech})`], ["nh", `NH có, sổ chưa (${n.nh})`], ["so", `Sổ có, NH chưa (${n.so})`], ["vang", `Lệch ngày (${n.lech})`], ["all", `Tất cả (${KQ.length})`]]
+      .map(([k, t]) => `<button type="button" data-l="${k}" class="${LOC === k ? "" : "ghost"}">${t}</button>`).join("");
+    $("#loc").querySelectorAll("button").forEach(b => b.onclick = () => { LOC = b.dataset.l; ve(); });
+    const ds = KQ.filter(x => LOC === "all" || (LOC === "lech" && x.loai !== "khop") || (LOC === "vang" && x.loai === "lech") || x.loai === LOC);
+    $("#dem").textContent = ds.length > 600 ? `Đang hiện 600/${ds.length}, file tải về có đủ` : `${ds.length} dòng`;
+    const o = (g, k) => g ? (k === "d" ? ngayVN(g.d) : g[k]) : "";
+    $("#bang").innerHTML = `<table><thead><tr><th>Kết quả</th><th>Chiều</th><th>Số tiền</th><th>Ngày NH</th><th>Nội dung sao kê</th><th>Ngày sổ</th><th>Số CT</th><th>Diễn giải sổ</th></tr></thead><tbody>${
+      ds.slice(0, 600).map(x => { const [m, t] = NHAN[x.loai], g = x.nh || x.so;
+        return `<tr class="${m === "ok" ? "" : m}"><td><span class="tag ${m}">${t}${x.loai === "lech" ? ` ${x.nh.lech} ngày` : ""}</span></td><td class="ben">${g.chieu === "vao" ? "↓ Vào" : "↑ Ra"}</td><td class="n">${sv(g.tien)}</td>
+          <td>${o(x.nh, "d")}</td><td class="ld">${esc(o(x.nh, "nd"))}${x.loai === "nh" && x.nh.goiY ? `<br><span class="muted">↔ có thể là dòng sổ ${ngayVN(x.nh.goiY.d)} ${esc(x.nh.goiY.ct)} ghi ${sv(x.nh.goiY.tien)}đ (lệch ${sv(x.nh.goiY.tien - x.nh.tien)}đ)</span>` : ""}</td><td>${o(x.so, "d")}</td><td>${esc(o(x.so, "ct"))}</td><td class="ld">${esc(o(x.so, "nd"))}${x.loai === "so" && x.so.goiY ? `<br><span class="muted">↔ có thể là giao dịch ngân hàng ${ngayVN(x.so.goiY.d)} ${sv(x.so.goiY.tien)}đ: ghi sổ nhầm số tiền?</span>` : ""}</td></tr>`; }).join("")}</tbody></table>`;
+  }
+
+  function tai() {
+    const aoa = [["Kết quả", "Chiều", "Số tiền", "Ngày ngân hàng", "Nội dung sao kê", "Ngày sổ", "Số chứng từ", "Diễn giải sổ", "Lệch ngày", "Gợi ý"]];
+    const thuTu = {nh: 0, so: 1, lech: 2, khop: 3};
+    [...KQ].sort((a, b) => thuTu[a.loai] - thuTu[b.loai] || a.d - b.d).forEach(x => { const g = x.nh || x.so;
+      aoa.push([NHAN[x.loai][1], g.chieu === "vao" ? "Vào" : "Ra", g.tien, x.nh ? x.nh.d : "", x.nh ? x.nh.nd : "", x.so ? x.so.d : "", x.so ? x.so.ct : "", x.so ? x.so.nd : "", x.nh && x.nh.ben ? x.nh.lech : "", g.goiY ? `Có thể ghi nhầm số tiền: bên kia ${sv(g.goiY.tien)}đ ngày ${ngayVN(g.goiY.d)}` : ""]); });
+    const ws = XLSX.utils.aoa_to_sheet(aoa, {cellDates: true});
+    const rg = XLSX.utils.decode_range(ws["!ref"]);
+    for (let r = 1; r <= rg.e.r; r++) { const o = ws[XLSX.utils.encode_cell({r, c: 2})]; if (o) o.z = "#,##0"; for (const c of [3, 5]) { const d = ws[XLSX.utils.encode_cell({r, c})]; if (d && d.t === "d") d.z = "dd/mm/yyyy"; } }
+    ws["!cols"] = [26, 7, 15, 12, 50, 12, 12, 50, 9, 50].map(w => ({wch: w})); ws["!autofilter"] = {ref: ws["!ref"]};
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Đối chiếu");
+    XLSX.writeFile(wb, "Doi-chieu-sao-ke-ngan-hang.xlsx");
+  }
+
+  async function chay(files) {
+    const doc_ = [], bo = [];
+    for (const f of files) {
+      const wb = XLSX.read(new Uint8Array(await f.arrayBuffer()), {type: "array", cellDates: true, raw: false});
+      let nhan = false;
+      for (const n of wb.SheetNames) { const b = bang(wb.Sheets[n]); if (b) { const r = doc(b, f.name); if (r.gd.length) { doc_.push({ten: f.name, ...r}); nhan = true; break; } } }
+      if (!nhan) bo.push(f.name);
+    }
+    // 2 file mà cùng bị nhận là sao kê hoặc cùng là sổ: file thứ hai coi là loại còn lại
+    if (doc_.length === 2 && doc_[0].laSo === doc_[1].laSo) {
+      const i = doc_.findIndex(x => /so|ledger|112|tgnh|tien gui/i.test(boDau(x.ten)) && !/sao ?ke|statement/i.test(boDau(x.ten)));
+      const j = i >= 0 ? i : 1, cu = doc_[j].laSo; doc_[j].laSo = !doc_[1 - j].laSo;
+      if (doc_[j].laSo !== cu) doc_[j].gd.forEach(x => x.chieu = x.chieu === "vao" ? "ra" : "vao");
+    }
+    const nh = doc_.filter(x => !x.laSo), s = doc_.filter(x => x.laSo);
+    $("#files").innerHTML = [...nh.map(x => `<span class="pill">🏦 ${esc(x.ten)} · sao kê · ${x.gd.length} giao dịch</span>`), ...s.map(x => `<span class="pill">📒 ${esc(x.ten)} · sổ · ${x.gd.length} dòng</span>`),
+      ...bo.map(n => `<span class="pill" style="color:var(--loi-ink)">✗ ${esc(n)}: không tìm thấy cột ngày + số tiền</span>`)].join("") +
+      (!nh.length || !s.length ? `<span class="pill" style="color:var(--sua-ink)">Cần đủ 1 file sao kê và 1 file sổ</span>` : "");
+    if (!nh.length || !s.length) { $("#kq").hidden = true; return; }
+    NH = nh.flatMap(x => x.gd); SO = s.flatMap(x => x.gd); TENF = files.map(f => f.name);
+    KQ = ghep(NH, SO, +$("#lech").value || 0); LOC = "lech";
+    $("#kq").hidden = false; ve();
+    $("#kq").scrollIntoView({behavior: "smooth", block: "start"});
+  }
+
+  // ---------- file mẫu: sao kê kiểu ngân hàng + sổ tiền gửi, cài sẵn chỗ lệch ----------
+  function fileMau() {
+    let s = 11; const rd = () => (s = (s * 16807) % 2147483647) / 2147483647, chon = a => a[Math.floor(rd() * a.length)];
+    const kh = ["CTY TNHH MINH AN", "CTY CP HAI DANG", "CTY TNHH SEN VANG", "CTY CP PHUONG NAM", "CTY TNHH KIM LONG", "CTY TNHH TRUONG THINH"];
+    const sk = [["SAO KÊ TÀI KHOẢN"], ["Số tài khoản: 0011 0000 12345 · Từ 01/10/2026 đến 31/10/2026"], [], ["STT", "Ngày giao dịch", "Số tham chiếu", "Số tiền ghi nợ", "Số tiền ghi có", "Số dư", "Nội dung giao dịch"]];
+    const so_ = [["SỔ TIỀN GỬI NGÂN HÀNG"], ["Tài khoản: 1121 – Tháng 10/2026"], [], ["Ngày CT", "Số CT", "Diễn giải", "TK đối ứng", "Thu (Nợ)", "Chi (Có)"]];
+    let du = 850000000, stt = 0, bc = 0, uc = 0;
+    const d = n => new Date(2026, 9, n);
+    for (let n = 1; n <= 31; n++) {
+      if (d(n).getDay() === 0 || d(n).getDay() === 6) continue;
+      const k = 1 + Math.floor(rd() * 3);
+      for (let i = 0; i < k; i++) {
+        const vao = rd() < 0.45, tien = Math.round((vao ? 20 + rd() * 300 : 3 + rd() * 120)) * 1e5, ai = chon(kh);
+        du += vao ? tien : -tien;
+        sk.push([++stt, d(n), "FT26" + String(1e6 + stt * 37).slice(1), vao ? "" : tien, vao ? tien : "", du, vao ? `${ai} TT TIEN HANG HD ${100 + stt}` : `TT ${ai} THEO HD ${200 + stt}`]);
+        so_.push([d(n), vao ? "BC" + String(++bc).padStart(3, "0") : "UNC" + String(++uc).padStart(3, "0"), vao ? `Thu tiền hàng ${ai}` : `Trả tiền ${ai}`, vao ? 131 : 331, vao ? tien : "", vao ? "" : tien]);
+      }
+    }
+    // cài sẵn chỗ lệch
+    du -= 22000; sk.push([++stt, d(31), "FEE2610", 22000, "", du, "PHI QUAN LY TAI KHOAN THANG 10"]);            // phí NH chưa hạch toán
+    du += 186420; sk.push([++stt, d(31), "INT2610", "", 186420, du, "TRA LAI TIEN GUI KHONG KY HAN"]);           // lãi chưa hạch toán
+    so_.push([d(30), "UNC" + String(++uc).padStart(3, "0"), "Trả tiền CTY CP PHUONG NAM", 331, "", 45000000]);    // sổ ghi, NH chưa trừ (chuyển ngày 31 nhưng chưa có)
+    const i1 = so_.findIndex((r, i) => i > 10 && r[4]); so_[i1][4] = so_[i1][4] + 900000;                          // ghi sổ nhầm số tiền
+    const i2 = so_.findIndex((r, i) => i > 20 && r[5]); so_[i2][0] = d(so_[i2][0].getDate() + 2 > 31 ? 31 : so_[i2][0].getDate() + 2); // ghi sổ lệch ngày
+    const wb = (aoa, n) => { const w = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(w, XLSX.utils.aoa_to_sheet(aoa, {cellDates: true}), n); return XLSX.write(w, {bookType: "xlsx", type: "array"}); };
+    return [new File([wb(sk, "SaoKe")], "Sao ke VCB T10-2026 (mau).xlsx"), new File([wb(so_, "So112")], "So tien gui 112 T10-2026 (mau).xlsx")];
+  }
+
+  const drop = $("#drop"), inp = $("#file");
+  inp.addEventListener("change", e => { if (e.target.files.length) chay([...e.target.files]); e.target.value = ""; });
+  ["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => e.dataTransfer.files.length && chay([...e.dataTransfer.files]));
+  $("#mau").addEventListener("click", () => chay(fileMau()));
+  $("#tai").addEventListener("click", tai);
+  $("#lech").addEventListener("change", () => { if (NH.length && SO.length) { KQ = ghep(NH, SO, +$("#lech").value || 0); ve(); } });
+  window.__dcnh = {chay, fileMau, KQ: () => KQ};
+})();
+</script>
+</body>
+</html>

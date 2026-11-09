@@ -1,0 +1,66 @@
+/* Giao diện chung cho các trang công cụ kế toán (soát khấu trừ, đối chiếu ngân hàng, biên bản công nợ) */
+/* Cùng bộ màu với Trợ lý văn phòng: xanh Excel, nền giấy */
+:root{
+  --bg:#f4f6f3; --surface:#fff; --ink:#1b2620; --muted:#5d6a63; --line:#dbe2dc;
+  --xl:#107c41; --xl-ink:#fff; --xl-soft:#e1f1e7; --tra:#e7f0fb; --tra-ink:#1f4f8a;
+  --sua:#fff3c4; --sua-ink:#7a5a00; --loi:#fde4e1; --loi-ink:#b3261e; --xoa:#eceff1;
+  --f:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111613; --surface:#18201b; --ink:#e6ece8; --muted:#9aa8a0; --line:#2b3630;
+  --xl:#3fbf7a; --xl-ink:#0b1a12; --xl-soft:#173324; --tra:#18263a; --tra-ink:#9cc3f0;
+  --sua:#3b3214; --sua-ink:#f2d27a; --loi:#3d1f1c; --loi-ink:#ff8f84; --xoa:#232a26; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--f)}
+.wrap{max-width:1180px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-left)) 64px;display:grid;gap:18px}
+header{display:grid;gap:6px}
+.top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.top a{color:var(--xl);font-weight:600;font-size:14px;text-decoration:none}
+.badge{justify-self:start;font:700 12px var(--f);letter-spacing:.05em;text-transform:uppercase;background:var(--xl-soft);color:var(--xl);padding:4px 10px;border-radius:999px}
+h1{margin:0;font-size:clamp(26px,4.5vw,38px);line-height:1.1;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+h1 span{color:var(--xl)}
+header p{margin:0;color:var(--muted);max-width:76ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:14px;min-width:0}
+h2{margin:0;font-size:17px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sb{justify-content:space-between}
+.muted{color:var(--muted);font-size:13.5px}
+.note{font-size:12.5px;color:var(--muted);margin:0}
+button,.btn{font:600 14.5px var(--f);border-radius:8px;padding:10px 16px;cursor:pointer;border:1.5px solid var(--xl);background:var(--xl);color:var(--xl-ink);display:inline-block}
+button.ghost,.btn.ghost{background:transparent;color:var(--xl)}
+button.sm{padding:6px 12px;font-size:13.5px}
+button:focus-visible,.btn:focus-within{outline:3px solid var(--xl);outline-offset:2px}
+.big{font-size:16px;padding:13px 22px}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:20px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between;background:var(--bg)}
+.drop.over{border-color:var(--xl);background:var(--xl-soft)}
+.drop strong{display:block;font-size:16px}
+.filebtn{position:relative}
+.filebtn input{position:absolute;width:1px;height:1px;opacity:0}
+.files{display:flex;gap:8px;flex-wrap:wrap}
+.pill{font:600 12.5px var(--f);padding:3px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.tong{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.tong div{border-radius:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--line)}
+.tong b{display:block;font-size:24px;line-height:1.15;font-variant-numeric:tabular-nums}
+.tong small{color:var(--muted);font-size:12.5px}
+.tong .l b{color:var(--loi-ink)} .tong .s b{color:var(--sua-ink)} .tong .o b{color:var(--xl)}
+.loc{display:flex;gap:6px;flex-wrap:wrap}
+.loc button{padding:6px 12px;font-size:13.5px}
+.ly{display:grid;gap:6px}
+.ly div{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid var(--line);border-left:5px solid var(--sua-ink);border-radius:8px;padding:8px 12px;background:var(--bg);font-size:14px}
+.ly div.do{border-left-color:var(--loi-ink)}
+.ly b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.grid{overflow:auto;max-height:620px;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;min-width:100%}
+th{position:sticky;top:0;background:var(--bg);color:var(--muted);font:600 12px var(--f);border:1px solid var(--line);padding:6px 9px;text-align:left;z-index:1;white-space:nowrap}
+td{border:1px solid var(--line);padding:5px 9px;white-space:nowrap;background:var(--surface);vertical-align:top}
+td.n{text-align:right} td.ld{white-space:normal;min-width:260px;max-width:360px}
+tr.do td:first-child{box-shadow:inset 4px 0 0 var(--loi-ink)} tr.vang td:first-child{box-shadow:inset 4px 0 0 var(--sua-ink)}
+.tag{font:700 11.5px var(--f);padding:2px 8px;border-radius:999px;white-space:nowrap;display:inline-block}
+.tag.do{background:var(--loi);color:var(--loi-ink)} .tag.vang{background:var(--sua);color:var(--sua-ink)} .tag.ok{background:var(--xl-soft);color:var(--xl)}
+details{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--bg)}
+summary{cursor:pointer;font-weight:600}
+details ul{margin:8px 0 0;padding-left:20px;font-size:14px}
+details li{margin:4px 0}
+footer{font-size:12.5px;color:var(--muted);text-align:center}
+@media (max-width:600px){.drop{padding:14px}.big{width:100%}}

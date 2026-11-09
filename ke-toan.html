@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Công cụ kế toán</title>
+<meta name="description" content="Bộ công cụ miễn phí cho kế toán: soát khấu trừ thuế GTGT, đối chiếu sao kê ngân hàng, biên bản đối chiếu công nợ hàng loạt, hoá đơn XML ra bảng kê. Chạy trên trình duyệt, file không gửi đi đâu.">
+<meta property="og:title" content="Bộ công cụ kế toán miễn phí">
+<meta property="og:description" content="Soát khấu trừ thuế GTGT · Đối chiếu sao kê ngân hàng · Biên bản đối chiếu công nợ hàng loạt · Hoá đơn XML ra bảng kê. File xử lý ngay trên máy bạn.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="ke-toan.css?v=202611091100">
+<style>
+.ds{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.cc{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:10px;align-content:start;text-decoration:none;color:var(--ink);transition:border-color .15s,box-shadow .15s}
+.cc:hover{border-color:var(--xl);box-shadow:0 4px 18px rgba(16,124,65,.12)}
+.cc .ic{font-size:30px;line-height:1}
+.cc h2{font-size:19px;line-height:1.25}
+.cc p{margin:0;color:var(--muted);font-size:14.5px}
+.cc ul{margin:0;padding-left:18px;font-size:14px;display:grid;gap:3px}
+.cc .di{justify-self:start;margin-top:4px;font:600 14.5px var(--f);color:var(--xl)}
+.cc .mo{justify-self:start;font:700 11.5px var(--f);letter-spacing:.04em;text-transform:uppercase;background:var(--loi);color:var(--loi-ink);padding:2px 8px;border-radius:999px}
+.cam{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.cam div{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px}
+.cam b{display:block;margin-bottom:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="top"><span class="badge">Miễn phí cho kế toán</span><a href="./">Trợ lý văn phòng →</a></div>
+    <h1>Bộ công cụ <span>kế toán</span></h1>
+    <p>Những việc cuối tháng, cuối năm phải dò bằng mắt: soát hoá đơn đầu vào, đối chiếu ngân hàng, gửi biên bản công nợ. Thả file Excel vào, vài giây là ra kết quả. Không cần cài, không cần tài khoản, file chỉ xử lý trên máy bạn.</p>
+  </header>
+
+  <div class="ds">
+    <a class="cc" href="soat-khau-tru.html">
+      <span class="ic">🛡️</span><span class="mo">Mới</span>
+      <h2>Soát khấu trừ thuế GTGT đầu vào</h2>
+      <p>Thả file Mua vào tải từ cổng hoá đơn điện tử, trang đánh dấu hoá đơn có nguy cơ không được khấu trừ.</p>
+      <ul><li>Hoá đơn từ 5 triệu ghi thanh toán tiền mặt</li><li>Hoá đơn đã bị thay thế, huỷ, trùng</li><li>Tiền thuế lệch thuế suất, dấu hiệu chia nhỏ hoá đơn</li></ul>
+      <span class="di">Mở công cụ →</span>
+    </a>
+    <a class="cc" href="doi-chieu-ngan-hang.html">
+      <span class="ic">🏦</span><span class="mo">Mới</span>
+      <h2>Đối chiếu sao kê ngân hàng với sổ 112</h2>
+      <p>Thả sao kê và sổ tiền gửi, trang tự ghép từng giao dịch theo chiều tiền, số tiền và ngày.</p>
+      <ul><li>Khoản ngân hàng có mà sổ chưa ghi (phí, lãi…)</li><li>Khoản sổ ghi mà ngân hàng chưa có</li><li>Ghi lệch ngày, ghi nhầm số tiền</li></ul>
+      <span class="di">Mở công cụ →</span>
+    </a>
+    <a class="cc" href="bien-ban-cong-no.html">
+      <span class="ic">🤝</span><span class="mo">Mới</span>
+      <h2>Biên bản đối chiếu công nợ hàng loạt</h2>
+      <p>Thả bảng công nợ 131 hoặc 331, mỗi khách hàng, nhà cung cấp ra một biên bản đúng mẫu.</p>
+      <ul><li>Dư đầu kỳ, phát sinh, dư cuối kỳ</li><li>Số tiền bằng chữ tự động</li><li>Tải 1 file Word chứa tất cả, hoặc in PDF</li></ul>
+      <span class="di">Mở công cụ →</span>
+    </a>
+    <a class="cc" href="./#hoadon">
+      <span class="ic">🧾</span>
+      <h2>Hoá đơn XML → Bảng kê</h2>
+      <p>Thả hàng trăm hoá đơn điện tử XML (hoặc file .zip), ra bảng kê Excel theo thuế suất và chi tiết mặt hàng.</p>
+      <ul><li>Soát hoá đơn trùng, cộng sai</li><li>Tiền bằng chữ sai, sai mã số thuế</li></ul>
+      <span class="di">Mở công cụ →</span>
+    </a>
+  </div>
+
+  <section class="card">
+    <h2>Dùng có yên tâm không?</h2>
+    <div class="cam">
+      <div><b>🔒 File không rời khỏi máy</b>Mọi xử lý chạy ngay trong trình duyệt, không tải file lên máy chủ nào.</div>
+      <div><b>🆓 Miễn phí, không đăng ký</b>Mở link là dùng, không cần tài khoản hay cài đặt.</div>
+      <div><b>🧪 Có file mẫu</b>Mỗi công cụ có nút chạy thử với dữ liệu giả để xem trước.</div>
+      <div><b>⚠️ Chỉ khoanh vùng</b>Kết quả giúp tìm nhanh chỗ cần kiểm, không kết luận thay kế toán.</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Cần làm theo đúng sổ sách bên mình?</h2>
+    <p class="muted" style="margin:0">Nhập – xuất – tồn theo thời điểm bất kỳ, giá vốn bình quân tháng, bảng kê hoá đơn lấy từ sổ, theo dõi công nợ và thanh toán theo hợp đồng, kiểm soát chứng từ kẹp theo hoá đơn… làm thẳng trên file Excel đang dùng, dán số liệu là tự chạy. Nhắn cho người đã gửi bạn link này để được xem file và báo giá.</p>
+  </section>
+
+  <footer>Chạy ngay trong trình duyệt, file không gửi đi đâu</footer>
+</div>
+</body>
+</html>

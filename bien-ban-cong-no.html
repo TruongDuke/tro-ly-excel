@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Biên bản đối chiếu công nợ</title>
+<meta name="description" content="Thả bảng công nợ, mỗi khách hàng hoặc nhà cung cấp ra một biên bản đối chiếu công nợ đúng mẫu, có số tiền bằng chữ, tải Word hoặc in PDF một lần.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="ke-toan.css?v=202611091100">
+<style>
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px 14px}
+.form label{display:grid;gap:4px;font-size:13px;color:var(--muted);font-weight:600}
+.form input,.form select{font:500 14.5px var(--f);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);min-width:0}
+.form .rong{grid-column:1/-1}
+.opts{display:flex;gap:16px;flex-wrap:wrap;font-size:14px}
+.opts label{display:flex;gap:6px;align-items:center}
+td input{margin:0}
+/* bản in: chỉ in các biên bản */
+#in{display:none}
+@media print{
+  body{background:#fff;color:#000}
+  .wrap{display:none}
+  #in{display:block;font:13pt/1.45 "Times New Roman",serif;color:#000}
+  .bb{page-break-after:always;padding:0}
+  .bb:last-child{page-break-after:auto}
+  @page{size:A4;margin:2cm 1.5cm 2cm 2.5cm}
+}
+.bb .qh{display:grid;text-align:center;font-weight:700}
+.bb .qh i{font-weight:400}
+.bb h3{text-align:center;font-size:15pt;margin:14pt 0 2pt}
+.bb .ky{text-align:center;font-style:italic;margin:0 0 10pt}
+.bb p{margin:3pt 0;text-align:justify}
+.bb table{width:100%;border-collapse:collapse;margin:6pt 0;font-size:12.5pt}
+.bb th,.bb td{border:1px solid #000;padding:4pt 6pt;white-space:normal;background:none;color:#000}
+.bb th{font:700 12.5pt "Times New Roman",serif;position:static;text-align:center}
+#xem{font:13pt/1.45 "Times New Roman",serif}
+.bb td.n{text-align:right}
+.bb .ky2{display:grid;grid-template-columns:1fr 1fr;text-align:center;margin-top:14pt;font-weight:700}
+.bb .ky2 i{font-weight:400;font-size:11.5pt}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="top"><span class="badge">Công cụ cho kế toán</span><a href="ke-toan.html">← Bộ công cụ kế toán</a></div>
+    <h1>Biên bản đối chiếu công nợ <span>hàng loạt</span></h1>
+    <p>Điền thông tin công ty một lần, thả bảng tổng hợp công nợ (phải thu 131 hoặc phải trả 331). Mỗi khách hàng, nhà cung cấp ra một biên bản riêng, đủ số dư đầu kỳ, phát sinh, số dư cuối kỳ và số tiền bằng chữ. Tải một file Word chứa tất cả, hoặc in / lưu PDF luôn.</p>
+  </header>
+
+  <section class="card">
+    <h2>1. Thông tin bên mình (Bên A)</h2>
+    <div class="form">
+      <label class="rong">Tên công ty<input id="tenA" placeholder="CÔNG TY TNHH ..."></label>
+      <label class="rong">Địa chỉ<input id="dcA"></label>
+      <label>Mã số thuế<input id="mstA"></label>
+      <label>Người đại diện<input id="ddA"></label>
+      <label>Chức vụ<input id="cvA" value="Giám đốc"></label>
+      <label>Điện thoại<input id="dtA"></label>
+      <label>Loại công nợ<select id="loai"><option value="131">Phải thu khách hàng (TK 131)</option><option value="331">Phải trả nhà cung cấp (TK 331)</option></select></label>
+      <label>Đối chiếu từ ngày (để trống nếu chỉ chốt số dư)<input id="tu" type="date"></label>
+      <label>Đến ngày<input id="den" type="date"></label>
+      <label>Địa danh<input id="diaDanh" placeholder="Hà Nội"></label>
+      <label>Hạn phản hồi (ngày)<input id="han" type="number" value="15" min="0"></label>
+    </div>
+    <p class="note">Thông tin này được nhớ trên máy anh chị cho lần sau, không gửi đi đâu.</p>
+  </section>
+
+  <section class="card">
+    <h2>2. Bảng công nợ</h2>
+    <div class="drop" id="drop">
+      <div><strong>Thả bảng tổng hợp công nợ (.xlsx) vào đây</strong><span class="muted">Cần cột tên khách hàng / nhà cung cấp và số dư (Dư cuối kỳ Nợ/Có, hoặc 1 cột "Số dư"). Có thêm Dư đầu kỳ, Phát sinh, MST, Địa chỉ thì biên bản đầy đủ hơn. Bảng 2 dòng tiêu đề (Dư đầu kỳ / Nợ – Có) cũng được.</span></div>
+      <div class="row"><label class="btn ghost filebtn">Chọn file<input type="file" id="file" accept=".xlsx,.xls,.csv"></label>
+        <button class="big" id="mau" type="button">Chạy thử với file mẫu</button></div>
+    </div>
+    <div class="files" id="files"></div>
+  </section>
+
+  <section class="card" id="kq" hidden>
+    <div class="row sb"><h2 id="tieuDe">3. Biên bản</h2><div class="row"><button class="ghost" id="inPdf" type="button">In / Lưu PDF</button><button id="taiWord" type="button">Tải Word</button></div></div>
+    <div class="opts"><label><input type="checkbox" id="bo0" checked> Bỏ đối tượng số dư bằng 0</label><label><input type="checkbox" id="chonHet" checked> Chọn tất cả</label></div>
+    <div class="tong" id="tong"></div>
+    <div class="grid" id="bang"></div>
+    <details><summary>Xem trước biên bản đầu tiên</summary><div id="xem" style="background:#fff;color:#000;padding:24px;border-radius:8px;margin-top:10px"></div></details>
+  </section>
+
+  <footer>Chạy ngay trong trình duyệt, file không gửi đi đâu · File mẫu dùng khách hàng giả</footer>
+</div>
+<div id="in"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+  const boDau = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
+  const khoa = s => boDau(s).replace(/[^a-z0-9]/g, "");
+  const rong = v => v === null || v === undefined || String(v).trim() === "";
+  const sv = n => Math.round(+n || 0).toLocaleString("vi-VN");
+  const so = v => { if (typeof v === "number") return v; if (rong(v)) return 0; let t = String(v).trim().replace(/\s|đ/gi, ""); const am = /^\(.*\)$/.test(t); t = t.replace(/[()]/g, "");
+    if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, "").replace(",", "."); else t = t.replace(/,/g, ""); const n = +t; return isNaN(n) ? 0 : am ? -n : n; };
+  const ngayVN = s => { if (!s) return ""; const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
+
+  // ---------- số tiền bằng chữ ----------
+  const CS = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
+  function ba(n, day) {
+    const t = Math.floor(n / 100), c = Math.floor(n % 100 / 10), d = n % 10, r = [];
+    if (day || t) r.push(CS[t], "trăm");
+    if (c > 1) { r.push(CS[c], "mươi"); if (d === 1) r.push("mốt"); else if (d === 5) r.push("lăm"); else if (d) r.push(CS[d]); }
+    else if (c === 1) { r.push("mười"); if (d === 5) r.push("lăm"); else if (d) r.push(CS[d]); }
+    else if (d) { if (day || t) r.push("lẻ"); r.push(CS[d]); }
+    return r.join(" ");
+  }
+  function bangChu(x) {
+    let n = Math.round(Math.abs(x)); if (!n) return "Không đồng";
+    const nhom = []; while (n > 0) { nhom.push(n % 1000); n = Math.floor(n / 1000); }
+    const r = [];
+    for (let i = nhom.length - 1; i >= 0; i--) {
+      if (nhom[i]) { r.push(ba(nhom[i], i < nhom.length - 1)); if (i % 3) r.push(["", "nghìn", "triệu"][i % 3]); }
+      if (i > 0 && i % 3 === 0 && nhom.slice(i, i + 3).some(Boolean)) r.push("tỷ");
+    }
+    const t = r.join(" ");
+    return t.charAt(0).toUpperCase() + t.slice(1) + " đồng";
+  }
+
+  // ---------- đọc bảng công nợ ----------
+  const TEN = {
+    ten: ["tenkhachhang", "tennhacungcap", "tendoituong", "tendonvi", "tencongty", "khachhang", "nhacungcap", "doituong", "tenkh", "tenncc", "ten"],
+    ma: ["makhachhang", "manhacungcap", "madoituong", "makh", "mancc", "madt", "ma"],
+    mst: ["masothue", "mst"], dc: ["diachi"], dd: ["nguoidaidien", "daidien"],
+    du: ["sodu", "conno", "congno", "sotienconno", "sodudoichieu", "sotien", "duno"],
+  };
+  const tim = (k, ds) => { for (const t of ds) { const j = k.findIndex(x => x === t); if (j >= 0) return j; } for (const t of ds) { const j = k.findIndex(x => x.startsWith(t) && t.length > 3); if (j >= 0) return j; } return -1; };
+  function bang(ws) {
+    const all = XLSX.utils.sheet_to_json(ws, {header: 1, raw: true, defval: ""});
+    for (let i = 0; i < Math.min(20, all.length); i++) {
+      const k = all[i].map(khoa), k2 = (all[i + 1] || []).map(khoa);
+      if (tim(k, TEN.ten) < 0) continue;
+      // 2 dòng tiêu đề: nhóm (Dư đầu / Phát sinh / Dư cuối) + Nợ / Có
+      const c = {}; let bo = 1;
+      if (k2.some(x => x === "no" || x === "co")) {
+        let nhom = "";
+        all[i].forEach((x, j) => { if (!rong(x)) nhom = khoa(x);
+          const loai = /dudau|dauky|sodudau/.test(nhom) ? "dau" : /phatsinh/.test(nhom) ? "ps" : /ducuoi|cuoiky|sotudcuoi|soducuoi/.test(nhom) ? "cuoi" : null;
+          if (loai && (k2[j] === "no" || k2[j] === "co")) c[loai + (k2[j] === "no" ? "No" : "Co")] = j; });
+        bo = 2;
+      } else {
+        k.forEach((x, j) => { const m = x.match(/^(dudau|dudauky|sodudau|sodudauky|phatsinh|psno|psco|ducuoi|ducuoiky|soducuoi|soducuoiky)(no|co)?$/);
+          if (!m) return; const loai = /dau/.test(m[1]) ? "dau" : /cuoi/.test(m[1]) ? "cuoi" : "ps"; const nc = m[2] || (m[1].endsWith("no") ? "no" : m[1].endsWith("co") ? "co" : null);
+          if (nc) c[loai + (nc === "no" ? "No" : "Co")] = j; });
+      }
+      for (const t of ["ten", "ma", "mst", "dc", "dd", "du"]) c[t] = tim(k, TEN[t]);
+      if (c.du === c.ten) c.du = -1;
+      if (c.cuoiNo === undefined && c.du < 0 && c.psNo === undefined) continue;
+      return {c, rows: all.slice(i + bo)};
+    }
+    return null;
+  }
+  function doc(b, loai) {
+    const c = b.c, ds = [], sg = loai === "331" ? -1 : 1;
+    const g = (r, k) => c[k] === undefined || c[k] < 0 ? 0 : so(r[c[k]]);
+    b.rows.forEach(r => {
+      const ten = String(r[c.ten] ?? "").trim();
+      const laTong = v => /^(tong cong|cong|tong|tong so|cong phat sinh)$/.test(boDau(v).replace(/[:.]/g, "").trim());
+      if (!ten || laTong(ten) || (c.ma >= 0 && laTong(r[c.ma]))) return;
+      const coDau = c.dauNo !== undefined || c.dauCo !== undefined, coPs = c.psNo !== undefined || c.psCo !== undefined;
+      const dau = sg * (g(r, "dauNo") - g(r, "dauCo"));
+      const tang = sg === 1 ? g(r, "psNo") : g(r, "psCo"), giam = sg === 1 ? g(r, "psCo") : g(r, "psNo");
+      let cuoi = c.cuoiNo !== undefined || c.cuoiCo !== undefined ? sg * (g(r, "cuoiNo") - g(r, "cuoiCo")) : c.du >= 0 ? so(r[c.du]) : dau + tang - giam;
+      ds.push({chon: true, ma: c.ma >= 0 ? String(r[c.ma] ?? "").trim() : "", ten, mst: c.mst >= 0 ? String(r[c.mst] ?? "").trim() : "", dc: c.dc >= 0 ? String(r[c.dc] ?? "").trim() : "",
+        dd: c.dd >= 0 ? String(r[c.dd] ?? "").trim() : "", dau: coDau ? dau : null, tang: coPs ? tang : null, giam: coPs ? giam : null, cuoi});
+    });
+    return ds;
+  }
+
+  // ---------- thông tin bên A (nhớ trên máy) ----------
+  const O = ["tenA", "dcA", "mstA", "ddA", "cvA", "dtA", "loai", "tu", "den", "diaDanh", "han"];
+  try { const v = JSON.parse(localStorage.getItem("bbcn") || "{}"); O.forEach(k => { if (v[k] !== undefined && v[k] !== "") $("#" + k).value = v[k]; }); } catch (e) {}
+  if (!$("#den").value) { const d = new Date(); $("#den").value = `${d.getFullYear()}-12-31`; }
+  const luu = () => { try { localStorage.setItem("bbcn", JSON.stringify(Object.fromEntries(O.map(k => [k, $("#" + k).value])))); } catch (e) {} };
+  O.forEach(k => $("#" + k).addEventListener("change", () => { luu(); if (BANG) { DS = doc(BANG, $("#loai").value); ve(); } }));
+  const A = () => Object.fromEntries(O.map(k => [k, $("#" + k).value.trim()]));
+
+  // ---------- nội dung 1 biên bản (dùng chung cho Word và bản in) ----------
+  function noiDung(x, a) {
+    const ph = a.loai === "331", den = ngayVN(a.den), tu = ngayVN(a.tu);
+    const B = "Bên B", bA = "Bên A";
+    const ket = x.cuoi === 0 ? `Tính đến ngày ${den}, hai bên không còn công nợ với nhau.`
+      : (ph ? x.cuoi > 0 : x.cuoi < 0)
+        ? `Tính đến ngày ${den}, ${bA} còn phải thanh toán cho ${B} số tiền: ${sv(Math.abs(x.cuoi))} đồng${x.cuoi < 0 && !ph ? ` (khoản ${B} trả trước)` : ""}.`
+        : `Tính đến ngày ${den}, ${B} còn phải thanh toán cho ${bA} số tiền: ${sv(Math.abs(x.cuoi))} đồng${ph && x.cuoi < 0 ? ` (khoản ${bA} trả trước)` : ""}.`;
+    const dong = [];
+    if (x.dau !== null) dong.push(["Số dư đầu kỳ" + (tu ? ` (ngày ${tu})` : ""), x.dau]);
+    if (x.tang !== null) dong.push([`Phát sinh tăng trong kỳ (hàng hoá, dịch vụ ${ph ? B : bA} cung cấp)`, x.tang]);
+    if (x.giam !== null) dong.push([`${ph ? bA : B} đã thanh toán trong kỳ`, x.giam]);
+    dong.push([`Số dư cuối kỳ (ngày ${den})`, x.cuoi]);
+    return {
+      ky: tu ? `Từ ngày ${tu} đến ngày ${den}` : `Tính đến ngày ${den}`,
+      mo: `Hôm nay, ngày ${den.slice(0, 2) || "…"} tháng ${den.slice(3, 5) || "…"} năm ${den.slice(6) || "…"}${a.diaDanh ? `, tại ${a.diaDanh}` : ""}, chúng tôi gồm:`,
+      benA: [`BÊN A: ${a.tenA || "…………………………………"}`, `Địa chỉ: ${a.dcA || "…………………………………"}`, `Mã số thuế: ${a.mstA || "…………………"}${a.dtA ? `     Điện thoại: ${a.dtA}` : ""}`, `Đại diện: ${a.ddA || "…………………………"}     Chức vụ: ${a.cvA || "…………………"}`],
+      benB: [`BÊN B: ${x.ten}`, `Địa chỉ: ${x.dc || "…………………………………………………………"}`, `Mã số thuế: ${x.mst || "…………………"}`, `Đại diện: ${x.dd || "…………………………"}     Chức vụ: …………………`],
+      dong, ket, chu: x.cuoi ? `(Bằng chữ: ${bangChu(Math.abs(x.cuoi))}.)` : "",
+      cuoi: [`Biên bản được lập thành 02 bản, mỗi bên giữ 01 bản có giá trị như nhau.`,
+        a.han && +a.han > 0 ? `Sau ${a.han} ngày kể từ ngày nhận được biên bản, nếu ${B} không có ý kiến phản hồi thì xem như ${B} đã xác nhận số liệu trên là đúng.` : ""].filter(Boolean),
+    };
+  }
+  function html(x, a) {
+    const n = noiDung(x, a);
+    return `<div class="bb"><div class="qh"><span>CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM</span><span>Độc lập – Tự do – Hạnh phúc</span><i>———————</i></div>
+      <h3>BIÊN BẢN ĐỐI CHIẾU CÔNG NỢ</h3><p class="ky">${esc(n.ky)}</p>
+      <p><i>Căn cứ hợp đồng kinh tế và tình hình giao nhận hàng hoá, dịch vụ, thanh toán thực tế giữa hai bên.</i></p>
+      <p>${esc(n.mo)}</p>${n.benA.map((t, i) => `<p>${i ? "" : "<b>"}${esc(t)}${i ? "" : "</b>"}</p>`).join("")}${n.benB.map((t, i) => `<p>${i ? "" : "<b>"}${esc(t)}${i ? "" : "</b>"}</p>`).join("")}
+      <p>Hai bên cùng đối chiếu công nợ như sau:</p>
+      <table><tr><th style="width:8%">STT</th><th>Nội dung</th><th style="width:28%">Số tiền (VNĐ)</th></tr>${n.dong.map((d, i) => `<tr><td style="text-align:center">${i + 1}</td><td>${esc(d[0])}</td><td class="n">${sv(d[1])}</td></tr>`).join("")}</table>
+      <p><b>${esc(n.ket)}</b></p>${n.chu ? `<p><i>${esc(n.chu)}</i></p>` : ""}${n.cuoi.map(t => `<p>${esc(t)}</p>`).join("")}
+      <div class="ky2"><div>ĐẠI DIỆN BÊN A<br><i>(Ký, ghi rõ họ tên, đóng dấu)</i></div><div>ĐẠI DIỆN BÊN B<br><i>(Ký, ghi rõ họ tên, đóng dấu)</i></div></div></div>`;
+  }
+
+  async function taiWord() {
+    const D = window.docx, a = A(), TNR = "Times New Roman", co = 26, ds = chonDs();
+    const p = (t, o = {}) => new D.Paragraph({alignment: o.can || D.AlignmentType.JUSTIFIED, spacing: {before: o.truoc ?? 40, after: o.sau ?? 0, line: 288},
+      children: (Array.isArray(t) ? t : [t]).map(x => typeof x === "string" ? new D.TextRun({text: x, font: TNR, size: o.co || co, bold: o.dam, italics: o.nghieng}) : x)});
+    const vien = {style: D.BorderStyle.SINGLE, size: 4, color: "000000"};
+    const cell = (t, w, o = {}) => new D.TableCell({width: {size: w, type: D.WidthType.DXA}, margins: {top: 50, bottom: 50, left: 100, right: 100}, verticalAlign: D.VerticalAlign.CENTER,
+      children: [p(t, {can: o.can, truoc: 0, dam: o.dam, co: 25})]});
+    const children = [];
+    ds.forEach((x, i) => {
+      const n = noiDung(x, a);
+      children.push(new D.Table({width: {size: 9355, type: D.WidthType.DXA}, columnWidths: [9355], borders: D.TableBorders.NONE,
+        rows: [new D.TableRow({children: [new D.TableCell({width: {size: 9355, type: D.WidthType.DXA}, borders: {top: {style: D.BorderStyle.NONE}, bottom: {style: D.BorderStyle.NONE}, left: {style: D.BorderStyle.NONE}, right: {style: D.BorderStyle.NONE}},
+          children: [p("CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM", {can: D.AlignmentType.CENTER, dam: true, truoc: 0}), p("Độc lập – Tự do – Hạnh phúc", {can: D.AlignmentType.CENTER, dam: true, truoc: 0}), p("———————", {can: D.AlignmentType.CENTER, truoc: 0})]})]})]}));
+      children.push(p("BIÊN BẢN ĐỐI CHIẾU CÔNG NỢ", {can: D.AlignmentType.CENTER, dam: true, co: 30, truoc: 240}));
+      children.push(p(n.ky, {can: D.AlignmentType.CENTER, nghieng: true, truoc: 0, sau: 120}));
+      children.push(p("Căn cứ hợp đồng kinh tế và tình hình giao nhận hàng hoá, dịch vụ, thanh toán thực tế giữa hai bên.", {nghieng: true}));
+      children.push(p(n.mo));
+      n.benA.forEach((t, j) => children.push(p(t, {dam: j === 0, truoc: j === 0 ? 80 : 20})));
+      n.benB.forEach((t, j) => children.push(p(t, {dam: j === 0, truoc: j === 0 ? 80 : 20})));
+      children.push(p("Hai bên cùng đối chiếu công nợ như sau:", {truoc: 80, sau: 80}));
+      const cw = [800, 5755, 2800];
+      children.push(new D.Table({width: {size: 9355, type: D.WidthType.DXA}, columnWidths: cw, layout: D.TableLayoutType.FIXED,
+        borders: {top: vien, bottom: vien, left: vien, right: vien, insideHorizontal: vien, insideVertical: vien},
+        rows: [new D.TableRow({tableHeader: true, children: [cell("STT", cw[0], {can: D.AlignmentType.CENTER, dam: true}), cell("Nội dung", cw[1], {can: D.AlignmentType.CENTER, dam: true}), cell("Số tiền (VNĐ)", cw[2], {can: D.AlignmentType.CENTER, dam: true})]}),
+          ...n.dong.map((d, j) => new D.TableRow({children: [cell(String(j + 1), cw[0], {can: D.AlignmentType.CENTER}), cell(d[0], cw[1], {dam: j === n.dong.length - 1}), cell(sv(d[1]), cw[2], {can: D.AlignmentType.RIGHT, dam: j === n.dong.length - 1})]}))]}));
+      children.push(p(n.ket, {dam: true, truoc: 120}));
+      if (n.chu) children.push(p(n.chu, {nghieng: true}));
+      n.cuoi.forEach(t => children.push(p(t)));
+      children.push(new D.Table({width: {size: 9355, type: D.WidthType.DXA}, columnWidths: [4677, 4678], borders: D.TableBorders.NONE,
+        rows: [new D.TableRow({children: ["ĐẠI DIỆN BÊN A", "ĐẠI DIỆN BÊN B"].map(t => new D.TableCell({width: {size: 4677, type: D.WidthType.DXA},
+          borders: {top: {style: D.BorderStyle.NONE}, bottom: {style: D.BorderStyle.NONE}, left: {style: D.BorderStyle.NONE}, right: {style: D.BorderStyle.NONE}},
+          children: [p(t, {can: D.AlignmentType.CENTER, dam: true, truoc: 240}), p("(Ký, ghi rõ họ tên, đóng dấu)", {can: D.AlignmentType.CENTER, nghieng: true, co: 23, truoc: 0})]}))})]}));
+      if (i < ds.length - 1) children.push(new D.Paragraph({children: [new D.PageBreak()]}));
+    });
+    const doc = new D.Document({creator: "Trợ lý văn phòng", title: "Biên bản đối chiếu công nợ",
+      styles: {default: {document: {run: {font: TNR, size: co}}}},
+      sections: [{properties: {page: {size: {width: 11906, height: 16838}, margin: {top: 1134, bottom: 1134, left: 1701, right: 850}}}, children}]});
+    const blob = await D.Packer.toBlob(doc);
+    const el = document.createElement("a"); el.href = URL.createObjectURL(blob); el.download = `Bien-ban-doi-chieu-cong-no_${a.loai}_${(a.den || "").replace(/-/g, "")}.docx`; el.click();
+    setTimeout(() => URL.revokeObjectURL(el.href), 2000);
+  }
+
+  // ---------- giao diện ----------
+  let BANG = null, DS = [], TENF = "";
+  const chonDs = () => DS.filter(x => x.chon && !($("#bo0").checked && Math.round(x.cuoi) === 0));
+  function ve() {
+    const hien = DS.filter(x => !($("#bo0").checked && Math.round(x.cuoi) === 0)), chon = chonDs();
+    const tong = chon.reduce((a, x) => a + x.cuoi, 0);
+    $("#tong").innerHTML = `<div class="o"><small>Biên bản sẽ lập</small><b>${chon.length}</b><small>trên ${DS.length} đối tượng trong file</small></div>
+      <div><small>Tổng số dư cuối kỳ</small><b>${sv(tong)}</b><small>${$("#loai").value === "331" ? "phải trả" : "phải thu"}</small></div>
+      <div class="s"><small>Thiếu MST / địa chỉ</small><b>${chon.filter(x => !x.mst || !x.dc).length}</b><small>để trống dấu chấm cho ghi tay</small></div>`;
+    const coDau = DS.some(x => x.dau !== null), coPs = DS.some(x => x.tang !== null);
+    $("#bang").innerHTML = `<table><thead><tr><th></th><th>Mã</th><th>Tên đối tượng</th><th>MST</th>${coDau ? "<th>Dư đầu kỳ</th>" : ""}${coPs ? "<th>Phát sinh tăng</th><th>Đã thanh toán</th>" : ""}<th>Dư cuối kỳ</th><th>Bằng chữ</th></tr></thead><tbody>${
+      hien.map(x => `<tr><td><input type="checkbox" data-i="${DS.indexOf(x)}" ${x.chon ? "checked" : ""}></td><td>${esc(x.ma)}</td><td>${esc(x.ten)}</td><td>${esc(x.mst)}</td>${coDau ? `<td class="n">${sv(x.dau)}</td>` : ""}${coPs ? `<td class="n">${sv(x.tang)}</td><td class="n">${sv(x.giam)}</td>` : ""}
+        <td class="n"><b>${sv(x.cuoi)}</b></td><td class="ld muted">${esc(bangChu(Math.abs(x.cuoi)))}</td></tr>`).join("")}</tbody></table>`;
+    $("#bang").querySelectorAll("input[data-i]").forEach(c => c.onchange = () => { DS[+c.dataset.i].chon = c.checked; ve(); });
+    $("#taiWord").textContent = `Tải Word (${chon.length} biên bản)`;
+    $("#xem").innerHTML = chon[0] ? html(chon[0], A()) : "<p>Chưa chọn đối tượng nào.</p>";
+  }
+  $("#bo0").onchange = ve;
+  $("#chonHet").onchange = () => { DS.forEach(x => x.chon = $("#chonHet").checked); ve(); };
+  $("#inPdf").onclick = () => { const a = A(); $("#in").innerHTML = chonDs().map(x => html(x, a)).join(""); window.print(); };
+  $("#taiWord").onclick = taiWord;
+
+  async function chay(f) {
+    const wb = XLSX.read(new Uint8Array(await f.arrayBuffer()), {type: "array", cellDates: true});
+    BANG = null;
+    for (const n of wb.SheetNames) { BANG = bang(wb.Sheets[n]); if (BANG) break; }
+    if (!BANG) { $("#files").innerHTML = `<span class="pill" style="color:var(--loi-ink)">✗ ${esc(f.name)}: không tìm thấy cột tên đối tượng và số dư</span>`; $("#kq").hidden = true; return; }
+    DS = doc(BANG, $("#loai").value); TENF = f.name;
+    $("#files").innerHTML = `<span class="pill">📒 ${esc(f.name)} · ${DS.length} đối tượng</span>`;
+    $("#kq").hidden = false; ve();
+    $("#kq").scrollIntoView({behavior: "smooth", block: "start"});
+  }
+
+  // ---------- file mẫu: bảng tổng hợp công nợ phải thu, 2 dòng tiêu đề ----------
+  function fileMau() {
+    let s = 5; const rd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    const kh = ["Công ty TNHH Thương mại Minh An", "Công ty CP Vật tư Hải Đăng", "Công ty TNHH Sen Vàng", "Công ty CP Thiết bị Phương Nam", "Công ty TNHH Văn phòng phẩm Kim Long",
+      "Công ty TNHH Vận tải Trường Thịnh", "Công ty CP Xây lắp An Phú", "Công ty TNHH Biển Xanh", "Công ty TNHH Sắt thép Đức Thành", "Công ty CP Viễn thông Sao Mai",
+      "Công ty TNHH In ấn Quang Minh", "Công ty CP Dược phẩm Tâm An", "Công ty TNHH Điện lạnh Bắc Hà", "Công ty CP Nhựa Hưng Long", "Công ty TNHH Nội thất Gia Phát"];
+    const aoa = [["BẢNG TỔNG HỢP CÔNG NỢ PHẢI THU KHÁCH HÀNG"], ["Từ ngày 01/01/2026 đến ngày 31/12/2026"], [],
+      ["STT", "Mã KH", "Tên khách hàng", "Mã số thuế", "Địa chỉ", "Dư đầu kỳ", "", "Phát sinh trong kỳ", "", "Dư cuối kỳ", ""],
+      ["", "", "", "", "", "Nợ", "Có", "Nợ", "Có", "Nợ", "Có"]];
+    kh.forEach((t, i) => {
+      const dau = i === 4 ? 0 : Math.round(rd() * 400) * 1e5, no = i === 7 ? 0 : Math.round(rd() * 1500) * 1e5;
+      let co = i === 6 ? dau + no : Math.round((dau + no) * (0.4 + rd() * 0.5) / 1e3) * 1e3;
+      if (i === 9) co = dau + no + 12500000;                         // khách trả trước
+      if (i === 7) co = dau;                                         // đã hết nợ
+      const cuoi = dau + no - co;
+      aoa.push([i + 1, "KH" + String(i + 1).padStart(3, "0"), t, i % 5 === 3 ? "" : "0109" + String(700000 + i * 913).padStart(6, "0"), i % 4 === 2 ? "" : `Số ${10 + i * 3} đường Láng, Đống Đa, Hà Nội`,
+        dau, 0, no, co, cuoi > 0 ? cuoi : 0, cuoi < 0 ? -cuoi : 0]);
+    });
+    const n = aoa.length;
+    aoa.push(["", "", "Tổng cộng", "", "", ...["F", "G", "H", "I", "J", "K"].map(c => ({f: `SUM(${c}6:${c}${n})`}))]);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!merges"] = [{s: {r: 3, c: 5}, e: {r: 3, c: 6}}, {s: {r: 3, c: 7}, e: {r: 3, c: 8}}, {s: {r: 3, c: 9}, e: {r: 3, c: 10}}];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "CongNo131");
+    return new File([XLSX.write(wb, {bookType: "xlsx", type: "array"})], "Tong hop cong no 131 (mau).xlsx");
+  }
+
+  const drop = $("#drop"), inp = $("#file");
+  inp.addEventListener("change", e => { if (e.target.files.length) chay(e.target.files[0]); e.target.value = ""; });
+  ["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => e.dataTransfer.files.length && chay(e.dataTransfer.files[0]));
+  $("#mau").addEventListener("click", () => {
+    const mau = {tenA: "CÔNG TY TNHH MẪU ABC", dcA: "Số 1 Phố Mẫu, Cầu Giấy, Hà Nội", mstA: "0100000000", ddA: "Nguyễn Văn A", diaDanh: "Hà Nội", tu: "2026-01-01", den: "2026-12-31", loai: "131"};
+    Object.entries(mau).forEach(([k, v]) => { if (!$("#" + k).value || k === "loai" || k === "tu" || k === "den") $("#" + k).value = v; });
+    chay(fileMau());
+  });
+  window.__bbcn = {chay, fileMau, bangChu, taiWord, DS: () => DS, html: x => html(x, A())};
+})();
+</script>
+</body>
+</html>
